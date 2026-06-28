@@ -1,0 +1,1398 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="督導差旅">
+<meta name="theme-color" content="#30386B">
+<title>墨竹亭 督導差旅｜雲端同步</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --navy: #30386B;
+  --navy-dark: #232a52;
+  --teal: #87CBC0;
+  --teal-light: #b8e4df;
+  --terra: #EA5532;
+  --gold: #F5A623;
+  --bg: #f4f3ef;
+  --card: #ffffff;
+  --text: #1a1a18;
+  --text2: #5f5e5a;
+  --text3: #9c9a92;
+  --border: rgba(0,0,0,0.09);
+  --radius: 12px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: -apple-system, 'PingFang TC', 'Helvetica Neue', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  overscroll-behavior: none;
+}
+
+/* ── 頂部導覽 ── */
+.topbar {
+  background: var(--navy);
+  color: #fff;
+  padding: calc(var(--safe-top) + 12px) 16px 12px;
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; gap: 10px;
+}
+.topbar-logo { font-size: 22px; }
+.topbar-title { flex: 1; }
+.topbar-title h1 { font-size: 15px; font-weight: 600; letter-spacing: .5px; }
+.topbar-title p { font-size: 11px; opacity: .6; letter-spacing: 1px; margin-top: 1px; }
+.topbar-user {
+  font-size: 12px; background: rgba(255,255,255,.15);
+  border-radius: 20px; padding: 4px 10px; cursor: pointer;
+  display: flex; align-items: center; gap: 5px;
+}
+.topbar-user .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); }
+
+/* ── 身份選擇頁 ── */
+#loginScreen {
+  min-height: 100dvh;
+  background: var(--navy);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 40px 20px calc(var(--safe-bottom) + 40px);
+  gap: 8px;
+}
+#loginScreen .brand { font-size: 48px; margin-bottom: 8px; }
+#loginScreen h2 { color: #fff; font-size: 18px; font-weight: 600; }
+#loginScreen p { color: rgba(255,255,255,.5); font-size: 13px; margin-bottom: 24px; }
+.login-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  width: 100%; max-width: 360px;
+}
+.login-btn {
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: var(--radius);
+  color: #fff; padding: 16px 12px;
+  text-align: center; cursor: pointer;
+  transition: background .15s;
+  font-size: 14px; font-weight: 600;
+}
+.login-btn:hover { background: rgba(255,255,255,.18); }
+.login-btn small { display: block; font-size: 11px; opacity: .5; font-weight: 400; margin-top: 2px; }
+.login-btn.approver { background: rgba(135,203,192,.12); border-color: rgba(135,203,192,.3); }
+.login-divider { color: rgba(255,255,255,.3); font-size: 12px; margin: 4px 0; width: 100%; max-width: 360px; text-align: center; }
+
+/* ── 月份選擇列 ── */
+.month-bar {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 0; overflow-x: auto;
+  padding: 0 16px;
+  scrollbar-width: none;
+}
+.month-bar::-webkit-scrollbar { display: none; }
+.month-tab {
+  padding: 10px 14px; font-size: 13px; color: var(--text2);
+  white-space: nowrap; cursor: pointer; border-bottom: 2px solid transparent;
+  transition: color .15s;
+}
+.month-tab.active { color: var(--navy); border-bottom-color: var(--navy); font-weight: 600; }
+
+/* ── 統計卡片列 ── */
+.stats-row {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px; padding: 12px 12px 4px;
+}
+.stat-card {
+  background: var(--card); border-radius: 10px;
+  padding: 10px 10px 8px; text-align: center;
+  border: 1px solid var(--border);
+}
+.stat-card .val { font-size: 20px; font-weight: 700; color: var(--navy); line-height: 1; }
+.stat-card .lbl { font-size: 10px; color: var(--text3); margin-top: 3px; }
+
+/* ── 狀態徽章 ── */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; padding: 2px 8px; border-radius: 20px;
+  font-weight: 500;
+}
+.badge-draft   { background: #f0efeb; color: var(--text2); }
+.badge-sub     { background: #fff8e6; color: #a06b00; }
+.badge-ap1     { background: #e8f5f3; color: #0f6e56; }
+.badge-done    { background: #e8f5f3; color: #0f6e56; font-weight: 700; }
+.badge-reject  { background: #fdf0ed; color: #993C1D; }
+
+/* ── 底部標籤列 ── */
+.tabbar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  padding: 6px 0 calc(var(--safe-bottom) + 6px);
+  display: flex; z-index: 100;
+}
+.tab-item {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; gap: 2px; cursor: pointer;
+  padding: 4px 0;
+}
+.tab-item .ico { font-size: 20px; transition: transform .15s; }
+.tab-item .lbl { font-size: 10px; color: var(--text3); }
+.tab-item.active .lbl { color: var(--navy); font-weight: 600; }
+.tab-item.active .ico { transform: scale(1.1); }
+
+/* ── 主內容區 ── */
+.main {
+  padding: 0 0 calc(var(--safe-bottom) + 80px);
+  min-height: calc(100dvh - 56px);
+}
+.page { display: none; }
+.page.active { display: block; }
+
+/* ── 區塊標題 ── */
+.section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 14px 6px;
+}
+.section-header h2 { font-size: 14px; font-weight: 600; color: var(--text2); letter-spacing: .3px; }
+.section-header .add-btn {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--navy); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; cursor: pointer; border: none; line-height: 1;
+}
+
+/* ── 記錄卡 ── */
+.record-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  margin: 0 12px 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: box-shadow .15s;
+}
+.record-card:active { box-shadow: 0 0 0 2px var(--teal); }
+.record-card .row1 {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;
+}
+.record-card .date { font-size: 13px; font-weight: 600; }
+.record-card .types {
+  display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 4px;
+}
+.record-card .type-tag {
+  font-size: 10px; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1px 6px; color: var(--text2);
+}
+.record-card .purpose { font-size: 13px; color: var(--text); margin-top: 3px; }
+.record-card .meta { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+/* ── 浮動新增表單 ── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45);
+  z-index: 200; display: none; align-items: flex-end;
+}
+.modal-overlay.open { display: flex; }
+.modal-sheet {
+  background: var(--card);
+  border-radius: 20px 20px 0 0;
+  width: 100%; max-height: 92dvh;
+  overflow-y: auto;
+  padding: 0 0 calc(var(--safe-bottom) + 20px);
+  animation: slideUp .22s ease-out;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal-handle { width: 36px; height: 4px; background: #ddd; border-radius: 2px; margin: 10px auto; }
+.modal-title {
+  font-size: 16px; font-weight: 700; color: var(--navy);
+  padding: 4px 16px 12px; border-bottom: 1px solid var(--border);
+}
+.form-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; }
+.form-row { display: flex; flex-direction: column; gap: 5px; }
+.form-row label { font-size: 12px; color: var(--text2); font-weight: 500; }
+.form-row input, .form-row textarea, .form-row select {
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 9px 11px; font-size: 14px; font-family: inherit;
+  background: var(--bg); width: 100%;
+  -webkit-appearance: none;
+}
+.form-row textarea { resize: none; height: 72px; }
+.form-row .time-row { display: flex; align-items: center; gap: 6px; }
+.form-row .time-row input { flex: 1; }
+.form-row .time-row span { color: var(--text3); font-size: 14px; }
+.checkbox-group { display: flex; flex-wrap: wrap; gap: 6px; }
+.cb-chip {
+  padding: 5px 10px; border-radius: 6px; font-size: 12px;
+  border: 1px solid var(--border); background: var(--bg);
+  cursor: pointer; user-select: none;
+}
+.cb-chip.sel { background: var(--navy); color: #fff; border-color: var(--navy); }
+.hours-display {
+  background: var(--navy); color: #fff; border-radius: 8px;
+  padding: 8px 12px; font-size: 13px; text-align: center;
+}
+.form-actions { display: flex; gap: 8px; padding: 0 16px; margin-top: 4px; }
+.btn-primary {
+  flex: 1; background: var(--navy); color: #fff;
+  border: none; border-radius: 10px; padding: 13px;
+  font-size: 15px; font-weight: 600; cursor: pointer;
+  font-family: inherit;
+}
+.btn-secondary {
+  flex: 1; background: transparent; color: var(--text2);
+  border: 1px solid var(--border); border-radius: 10px; padding: 13px;
+  font-size: 15px; cursor: pointer; font-family: inherit;
+}
+.btn-danger {
+  background: #fdf0ed; color: var(--terra);
+  border: 1px solid #f5c4b3; border-radius: 10px; padding: 13px;
+  font-size: 14px; cursor: pointer; font-family: inherit; width: 100%; margin-top: 6px;
+}
+.btn-submit {
+  background: var(--teal); color: var(--navy-dark);
+  border: none; border-radius: 10px; padding: 13px;
+  font-size: 15px; font-weight: 700; cursor: pointer;
+  font-family: inherit; width: calc(100% - 32px); margin: 0 16px;
+}
+
+/* ── 費用請款頁 ── */
+.expense-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  margin: 0 12px 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.expense-card .row1 { display: flex; justify-content: space-between; align-items: flex-start; }
+.expense-card .desc { font-size: 13px; font-weight: 500; flex: 1; }
+.expense-card .amt { font-size: 16px; font-weight: 700; color: var(--navy); }
+.expense-card .meta { font-size: 11px; color: var(--text3); margin-top: 4px; }
+.total-bar {
+  background: var(--navy); color: #fff;
+  margin: 4px 12px 8px; border-radius: var(--radius);
+  padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;
+}
+.total-bar .lbl { font-size: 12px; opacity: .7; }
+.total-bar .amt { font-size: 22px; font-weight: 700; }
+
+/* ── 月曆頁 ── */
+.calendar-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  gap: 1px; background: var(--border);
+  margin: 8px 12px; border-radius: 10px; overflow: hidden;
+}
+.cal-header { background: var(--navy); color: rgba(255,255,255,.7); text-align: center; padding: 6px 0; font-size: 11px; }
+.cal-day {
+  background: var(--card); text-align: center;
+  padding: 6px 2px 5px; font-size: 12px; min-height: 44px;
+  cursor: pointer; position: relative;
+}
+.cal-day.other { color: var(--text3); }
+.cal-day.has-trip { background: #e8f5f3; }
+.cal-day.has-expense { background: #fff8e6; }
+.cal-day.has-both { background: #e8f0f8; }
+.cal-day.today .day-num { background: var(--navy); color: #fff; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; margin: 0 auto 2px; }
+.cal-dot { font-size: 8px; color: var(--teal); }
+.cal-day:hover { background: var(--bg); }
+
+/* ── 審核頁（主管視角）── */
+.supervisor-select {
+  display: flex; gap: 6px; padding: 10px 12px; overflow-x: auto; scrollbar-width: none;
+}
+.sup-chip {
+  padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
+  border: 1px solid var(--border); background: var(--card); white-space: nowrap;
+  cursor: pointer;
+}
+.sup-chip.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+.approve-card {
+  background: var(--card); border-radius: var(--radius);
+  margin: 0 12px 8px; padding: 12px 14px;
+  border: 1px solid var(--border);
+}
+.approve-card .sup-name { font-size: 12px; color: var(--teal); font-weight: 600; }
+.approve-card .info { font-size: 13px; margin: 4px 0; }
+.approve-actions { display: flex; gap: 6px; margin-top: 10px; }
+.btn-approve { flex: 1; background: var(--teal); color: var(--navy-dark); border: none; border-radius: 8px; padding: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.btn-reject  { flex: 1; background: #fdf0ed; color: var(--terra); border: 1px solid #f5c4b3; border-radius: 8px; padding: 8px; font-size: 13px; cursor: pointer; font-family: inherit; }
+
+/* ── 下載/輸出頁 ── */
+.export-card {
+  background: var(--card); border-radius: var(--radius);
+  margin: 0 12px 10px; padding: 16px;
+  border: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px; cursor: pointer;
+}
+.export-icon { font-size: 28px; }
+.export-info h3 { font-size: 14px; font-weight: 600; }
+.export-info p  { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+/* ── Toast ── */
+.toast {
+  position: fixed; bottom: calc(var(--safe-bottom) + 80px); left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a18; color: #fff; border-radius: 20px;
+  padding: 8px 20px; font-size: 13px;
+  z-index: 500; opacity: 0; pointer-events: none;
+  transition: opacity .2s;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; }
+
+/* ── 空狀態 ── */
+.empty-state {
+  text-align: center; padding: 48px 24px;
+  color: var(--text3);
+}
+.empty-state .ico { font-size: 48px; margin-bottom: 8px; }
+.empty-state p { font-size: 14px; }
+
+/* ── 載入動畫 ── */
+.spinner { text-align: center; padding: 32px; font-size: 24px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { display: inline-block; animation: spin 1s linear infinite; }
+
+/* ── 分隔線 ── */
+.divider { height: 1px; background: var(--border); margin: 0 14px; }
+
+/* ── 月份提交狀態橫幅 ── */
+.status-banner {
+  margin: 8px 12px; border-radius: 10px; padding: 10px 14px;
+  display: flex; align-items: center; gap: 10px; font-size: 13px;
+}
+.status-banner.draft     { background: #f0efeb; color: var(--text2); }
+.status-banner.submitted { background: #fff8e6; color: #a06b00; }
+.status-banner.approved1 { background: #e8f5f3; color: #0f6e56; }
+.status-banner.done      { background: #d4f0ea; color: #085041; }
+.status-banner.rejected  { background: #fdf0ed; color: var(--terra); }
+</style>
+</head>
+<body>
+
+<!-- ── 身份選擇 ── -->
+<div id="loginScreen">
+  <div class="brand">竹</div>
+  <h2>督導差旅系統</h2>
+  <p>SUPERVISOR · MZT · 雲端同步</p>
+  <div class="login-grid">
+    <div class="login-btn" onclick="login('lin-shang-yu','林尚諭','supervisor')">林尚諭<small>督導</small></div>
+    <div class="login-btn" onclick="login('lin-yi-hua','林依華','supervisor')">林依華<small>督導</small></div>
+    <div class="login-btn" onclick="login('zhu-ming-zhe','朱明哲','supervisor')">朱明哲<small>督導</small></div>
+    <div class="login-btn" onclick="login('cai-xin-en','蔡昕恩','supervisor')">蔡昕恩<small>督導</small></div>
+  </div>
+  <div class="login-divider" style="margin-top:12px">── 管理層 ──</div>
+  <div class="login-grid" style="max-width:360px">
+    <div class="login-btn approver" onclick="loginWithPwd('xie-zheng-lun','謝政倫','approver1')">謝政倫<small>第一核簽</small></div>
+    <div class="login-btn approver" onclick="loginWithPwd('shen-jun-xian','沈俊賢','approver2')">沈俊賢<small>執行長</small></div>
+  </div>
+</div>
+
+<!-- ── 主應用（登入後顯示）── -->
+<div id="app" style="display:none">
+
+  <div class="topbar">
+    <div class="topbar-logo">竹</div>
+    <div class="topbar-title">
+      <h1>督導差旅系統</h1>
+      <p>MZT · CLOUD SYNC</p>
+    </div>
+    <div class="topbar-user" onclick="logout()">
+      <div class="dot"></div>
+      <span id="userLabel">-</span>
+    </div>
+  </div>
+
+  <!-- 月份切換（督導視角）-->
+  <div id="monthBarWrap">
+    <div class="month-bar" id="monthBar"></div>
+  </div>
+
+  <div class="main">
+    <!-- ── 出差登記 ── -->
+    <div class="page active" id="pageTrip">
+      <div id="tripStatusBanner"></div>
+      <div class="stats-row">
+        <div class="stat-card"><div class="val" id="statTripCount">0</div><div class="lbl">出差次數</div></div>
+        <div class="stat-card"><div class="val" id="statHours">0</div><div class="lbl">總時數(h)</div></div>
+        <div class="stat-card"><div class="val" id="statDays">0</div><div class="lbl">出差天數</div></div>
+      </div>
+      <div class="section-header">
+        <h2>出差登記</h2>
+        <button class="add-btn" id="addTripBtn" onclick="openTripModal()">＋</button>
+      </div>
+      <div id="tripList"><div class="spinner"><span class="spin">⟳</span></div></div>
+      <div style="padding: 12px 16px; padding-bottom: 0;">
+        <button class="btn-submit" id="submitMonthBtn" onclick="submitMonth()">📤 送審本月出差單</button>
+      </div>
+    </div>
+
+    <!-- ── 費用請款 ── -->
+    <div class="page" id="pageExpense">
+      <div id="expenseStatusBanner"></div>
+      <div class="section-header" style="padding-top:12px">
+        <h2>費用請款</h2>
+        <button class="add-btn" onclick="openExpenseModal()">＋</button>
+      </div>
+      <div id="totalBar" class="total-bar" style="display:none">
+        <div><div class="lbl">本月請款合計</div><div class="amt" id="totalAmt">$0</div></div>
+        <div style="font-size:12px;opacity:.7" id="expenseCount">0 筆</div>
+      </div>
+      <div id="expenseList"><div class="spinner"><span class="spin">⟳</span></div></div>
+    </div>
+
+    <!-- ── 月曆 ── -->
+    <div class="page" id="pageCalendar">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 4px">
+        <button onclick="prevMonth()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--navy)">‹</button>
+        <span id="calTitle" style="font-size:15px;font-weight:600;color:var(--navy)"></span>
+        <button onclick="nextMonth()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--navy)">›</button>
+      </div>
+      <div class="calendar-grid" id="calGrid">
+        <div class="cal-header">日</div><div class="cal-header">一</div><div class="cal-header">二</div>
+        <div class="cal-header">三</div><div class="cal-header">四</div><div class="cal-header">五</div><div class="cal-header">六</div>
+      </div>
+      <div id="calDayDetail" style="padding:0 12px"></div>
+    </div>
+
+    <!-- ── 審核（主管/執行長）── -->
+    <div class="page" id="pageApprove">
+      <div class="supervisor-select" id="supFilter"></div>
+      <div class="section-header">
+        <h2 id="approveTitle">待審核</h2>
+      </div>
+      <div id="approveList"><div class="empty-state"><div class="ico">✅</div><p>目前沒有待審核項目</p></div></div>
+    </div>
+
+    <!-- ── 輸出下載 ── -->
+    <div class="page" id="pageExport">
+      <div class="section-header" style="padding-top:12px">
+        <h2>匯出 / 下載</h2>
+      </div>
+      <div class="export-card" onclick="exportTripTable()">
+        <div class="export-icon">📋</div>
+        <div class="export-info">
+          <h3>出差登記表</h3>
+          <p>下載本月出差表（PDF 預覽格式）</p>
+        </div>
+      </div>
+      <div class="export-card" onclick="exportExpenseXlsx()">
+        <div class="export-icon">📊</div>
+        <div class="export-info">
+          <h3>費用請款單</h3>
+          <p>下載本月請款單 XLSX</p>
+        </div>
+      </div>
+      <div style="padding: 12px 16px; background: var(--card); margin: 0 12px; border-radius: var(--radius); border: 1px solid var(--border);">
+        <p style="font-size:12px;color:var(--text2);line-height:1.6">
+          <strong>注意事項</strong><br>
+          1. 單據送審後才可下載完整版<br>
+          2. 收據照片請先上傳至各費用項目<br>
+          3. 請款單需主管簽核後方可付款
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 底部 Tab ── -->
+  <div class="tabbar" id="tabbar">
+    <div class="tab-item active" onclick="switchTab('trip',0)"><div class="ico">🗓</div><div class="lbl">出差單</div></div>
+    <div class="tab-item" onclick="switchTab('expense',1)"><div class="ico">💰</div><div class="lbl">請款</div></div>
+    <div class="tab-item" onclick="switchTab('calendar',2)"><div class="ico">📅</div><div class="lbl">月曆</div></div>
+    <div class="tab-item" id="approveTab" onclick="switchTab('approve',3)" style="display:none"><div class="ico">✅</div><div class="lbl">審核</div></div>
+    <div class="tab-item" onclick="switchTab('export',4)"><div class="ico">📥</div><div class="lbl">匯出</div></div>
+  </div>
+</div>
+
+<!-- ── 出差單新增/編輯 Modal ── -->
+<div class="modal-overlay" id="tripModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="tripModalTitle">新增出差登記</div>
+    <div class="form-body">
+      <input type="hidden" id="editTripId">
+      <div class="form-row">
+        <label>出差日期</label>
+        <input type="date" id="tripDateStart" style="margin-bottom:6px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;color:var(--text2)">至（多日出差）</span>
+          <input type="date" id="tripDateEnd" style="flex:1">
+        </div>
+      </div>
+      <div class="form-row">
+        <label>差別（可多選）</label>
+        <div class="checkbox-group" id="tripTypeGroup">
+          <div class="cb-chip" data-v="巡店">巡店</div>
+          <div class="cb-chip" data-v="送貨">送貨</div>
+          <div class="cb-chip" data-v="行政">行政</div>
+          <div class="cb-chip" data-v="訓練">訓練</div>
+          <div class="cb-chip" data-v="會議">會議</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>時段</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="flex:1;display:flex;gap:4px">
+            <select id="timeStartH" onchange="calcHours()" style="flex:1;text-align:center"></select>
+            <select id="timeStartM" onchange="calcHours()" style="flex:1;text-align:center"></select>
+          </div>
+          <span style="color:var(--text3);font-size:14px">→</span>
+          <div style="flex:1;display:flex;gap:4px">
+            <select id="timeEndH" onchange="calcHours()" style="flex:1;text-align:center"></select>
+            <select id="timeEndM" onchange="calcHours()" style="flex:1;text-align:center"></select>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-top:3px;padding:0 2px">
+          <span>出發時　　分</span><span>返回時　　分</span>
+        </div>
+        <div class="hours-display" id="hoursDisplay">時數：請選擇時段</div>
+      </div>
+      <div class="form-row">
+        <label>地點 / 分店</label>
+        <select id="tripLocation">
+          <option value="">── 請選擇分店 ──</option>
+          <option value="總部">總部</option>
+          <option value="中央廚房">中央廚房</option>
+          <option value="新竹金山店">新竹金山店</option>
+          <option value="台中黎明店">台中黎明店</option>
+          <option value="林口長庚店">林口長庚店</option>
+          <option value="新竹光復店">新竹光復店</option>
+          <option value="桃園大有店">桃園大有店</option>
+          <option value="彰化鹿港店">彰化鹿港店</option>
+          <option value="員林中山店">員林中山店</option>
+          <option value="中壢九和店">中壢九和店</option>
+          <option value="台北六張犁店">台北六張犁店</option>
+          <option value="竹北博愛店">竹北博愛店</option>
+          <option value="新竹湖口店">新竹湖口店</option>
+          <option value="雲林虎尾店">雲林虎尾店</option>
+          <option value="台北行天宮店">台北行天宮店</option>
+          <option value="台中西屯店">台中西屯店</option>
+          <option value="新莊輔大店">新莊輔大店</option>
+          <option value="嘉義秀泰店">嘉義秀泰店</option>
+          <option value="板橋雙十店">板橋雙十店</option>
+          <option value="台北善導寺店">台北善導寺店</option>
+          <option value="中壢中原店">中壢中原店</option>
+          <option value="彰化曉陽店">彰化曉陽店</option>
+          <option value="台中文心店">台中文心店</option>
+          <option value="北車站前店">北車站前店</option>
+          <option value="桃園藝文店">桃園藝文店</option>
+          <option value="內湖瑞光店">內湖瑞光店</option>
+          <option value="大里益民店">大里益民店</option>
+          <option value="雲林斗六店">雲林斗六店</option>
+          <option value="桃園武陵店">桃園武陵店</option>
+          <option value="高雄店">高雄店</option>
+          <option value="誠品生活新店店B117">誠品生活新店店B117</option>
+          <option value="__other__">其他（自行輸入）</option>
+        </select>
+        <input type="text" id="tripLocationOther" placeholder="請輸入地點" style="display:none;margin-top:6px">
+      </div>
+      <div class="form-row">
+        <label>事由 / 工作內容</label>
+        <textarea id="tripPurpose" placeholder="說明出差目的或工作內容"></textarea>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-secondary" onclick="closeTripModal()">取消</button>
+      <button class="btn-primary" onclick="saveTrip()">儲存</button>
+    </div>
+    <div style="padding: 8px 16px 0;">
+      <button class="btn-danger" id="deleteTripBtn" onclick="deleteTrip()" style="display:none">🗑 刪除此筆</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 費用請款 Modal ── -->
+<div class="modal-overlay" id="expenseModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="expenseModalTitle">新增費用項目</div>
+    <div class="form-body">
+      <input type="hidden" id="editExpenseId">
+      <div class="form-row">
+        <label>日期</label>
+        <input type="date" id="expDate">
+      </div>
+      <div class="form-row">
+        <label>事由 / 用途描述</label>
+        <textarea id="expDesc" placeholder="如：大里益民開幕支援（新竹-台中）"></textarea>
+      </div>
+      <div class="form-row">
+        <label>金額（元）</label>
+        <input type="number" id="expAmount" placeholder="0" inputmode="numeric">
+      </div>
+      <div class="form-row">
+        <label>公里數（交通費用填寫）</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="number" id="expKm" placeholder="0" inputmode="numeric" style="flex:1" oninput="calcKmFee()">
+          <span style="font-size:13px;color:var(--text2)">km</span>
+        </div>
+        <div id="kmFeeHint" style="font-size:12px;color:var(--teal);margin-top:4px;display:none"></div>
+      </div>
+      <div class="form-row">
+        <label>營業稅（選填）</label>
+        <input type="number" id="expTax" placeholder="0" inputmode="numeric">
+      </div>
+      <div class="form-row">
+        <label>憑證上傳（收據 / 發票）</label>
+        <input type="file" id="expReceipt" accept="image/*,.pdf" style="font-size:13px;padding:8px">
+        <div id="receiptPreview" style="margin-top:4px"></div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-secondary" onclick="closeExpenseModal()">取消</button>
+      <button class="btn-primary" onclick="saveExpense()">儲存</button>
+    </div>
+    <div style="padding: 8px 16px 0;">
+      <button class="btn-danger" id="deleteExpenseBtn" onclick="deleteExpense()" style="display:none">🗑 刪除此筆</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast ── -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════
+// Supabase 設定 ← 請填入你的專案資訊
+// ══════════════════════════════════════
+const SUPABASE_URL = 'https://nhvdyqafykmkhjhelpsv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_v4czwTJZM9Nz8lQkWc4EcQ_JC5FHPlC';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── 狀態 ──
+let currentUser = null;
+let currentMonth = getDefaultMonth(); // '11506'
+let trips = [], expenses = [], submissions = {};
+let calViewYear = new Date().getFullYear(), calViewMonth = new Date().getMonth();
+let editingTripId = null, editingExpenseId = null;
+
+function getDefaultMonth() {
+  const d = new Date();
+  const rok = d.getFullYear() - 1911;
+  return `${rok}0${d.getMonth() + 1}`.slice(-4).padStart(5, rok.toString());
+}
+
+function getMonthLabel(ym) {
+  // '11506' → '115年06月'
+  const rok = ym.slice(0, -2);
+  const mo  = ym.slice(-2);
+  return `${rok}年${mo}月`;
+}
+
+function buildMonthList() {
+  const months = [];
+  const now = new Date();
+  for (let i = 0; i <= 3; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const rok = d.getFullYear() - 1911;
+    const mo  = String(d.getMonth() + 1).padStart(2, '0');
+    months.push(`${rok}${mo}`);
+  }
+  return months;
+}
+
+// ── 登入 ──
+function loginWithPwd(id, name, role) {
+  const pwd = prompt(`${name} 請輸入密碼：`);
+  if (pwd === null) return;
+  if (pwd !== '888') {
+    alert('密碼錯誤');
+    return;
+  }
+  login(id, name, role);
+}
+
+function login(id, name, role) {
+  currentUser = { id, name, role };
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('userLabel').textContent = name;
+  // 核簽人顯示審核 tab
+  const approveTab = document.getElementById('approveTab');
+  if (role === 'approver1' || role === 'approver2') {
+    approveTab.style.display = 'flex';
+  }
+  buildMonthBar();
+  loadAll();
+}
+
+function logout() {
+  currentUser = null;
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('approveTab').style.display = 'none';
+}
+
+function buildMonthBar() {
+  const months = buildMonthList();
+  const bar = document.getElementById('monthBar');
+  bar.innerHTML = months.map(m =>
+    `<div class="month-tab ${m === currentMonth ? 'active' : ''}" onclick="selectMonth('${m}')">${getMonthLabel(m)}</div>`
+  ).join('');
+  // 隱藏主管的月份列
+  document.getElementById('monthBarWrap').style.display =
+    (currentUser?.role === 'approver1' || currentUser?.role === 'approver2') ? 'none' : 'block';
+}
+
+function selectMonth(m) {
+  currentMonth = m;
+  document.querySelectorAll('.month-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  loadAll();
+}
+
+// ── 資料載入 ──
+async function loadAll() {
+  if (!currentUser) return;
+  if (currentUser.role === 'approver1' || currentUser.role === 'approver2') {
+    loadApproveList();
+    return;
+  }
+  await Promise.all([loadTrips(), loadExpenses(), loadSubmission()]);
+  renderTrips();
+  renderExpenses();
+  renderStatusBanners();
+  updateStats();
+}
+
+async function loadTrips() {
+  const { data } = await sb.from('trip_records')
+    .select('*')
+    .eq('supervisor_id', currentUser.id)
+    .eq('year_month', currentMonth)
+    .order('created_at');
+  trips = data || [];
+}
+
+async function loadExpenses() {
+  const { data } = await sb.from('expense_items')
+    .select('*')
+    .eq('supervisor_id', currentUser.id)
+    .eq('year_month', currentMonth)
+    .order('created_at');
+  expenses = data || [];
+}
+
+async function loadSubmission() {
+  const { data } = await sb.from('monthly_submissions')
+    .select('*')
+    .eq('supervisor_id', currentUser.id)
+    .eq('year_month', currentMonth)
+    .maybeSingle();
+  submissions[currentMonth] = data;
+}
+
+// ── 渲染出差列表 ──
+function renderTrips() {
+  const el = document.getElementById('tripList');
+  if (!trips.length) {
+    el.innerHTML = '<div class="empty-state"><div class="ico">🗓</div><p>尚未新增出差登記</p></div>';
+    document.getElementById('submitMonthBtn').style.display = 'none';
+    return;
+  }
+  el.innerHTML = trips.map(t => `
+    <div class="record-card" onclick="openTripModal('${t.id}')">
+      <div class="row1">
+        <div class="date">📅 ${t.trip_date}</div>
+        ${badgeHtml(t.status)}
+      </div>
+      <div class="types">${(t.trip_types || []).map(tt => `<span class="type-tag">${tt}</span>`).join('')}</div>
+      <div class="purpose">${t.purpose}</div>
+      <div class="meta">${t.time_start}–${t.time_end}　⏱ ${t.hours}h${t.location ? '　📍' + t.location : ''}</div>
+    </div>
+  `).join('');
+  const sub = submissions[currentMonth];
+  const canSubmit = !sub || sub.status === 'rejected';
+  const btn = document.getElementById('submitMonthBtn');
+  btn.style.display = trips.length ? 'block' : 'none';
+  btn.textContent = sub ? `📤 ${statusLabel(sub.status)}` : '📤 送審本月出差單';
+  btn.disabled = !canSubmit;
+  btn.style.opacity = canSubmit ? '1' : '0.5';
+  // 鎖定新增按鈕
+  const addBtn = document.getElementById('addTripBtn');
+  addBtn.style.display = (sub && sub.status !== 'rejected') ? 'none' : 'flex';
+}
+
+// ── 渲染費用列表 ──
+function renderExpenses() {
+  const el = document.getElementById('expenseList');
+  const total = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  if (!expenses.length) {
+    el.innerHTML = '<div class="empty-state"><div class="ico">💰</div><p>尚未新增費用項目</p></div>';
+    document.getElementById('totalBar').style.display = 'none';
+    return;
+  }
+  document.getElementById('totalBar').style.display = 'flex';
+  document.getElementById('totalAmt').textContent = '$' + total.toLocaleString();
+  document.getElementById('expenseCount').textContent = expenses.length + ' 筆';
+  el.innerHTML = expenses.map((e, i) => `
+    <div class="expense-card" onclick="openExpenseModal('${e.id}')">
+      <div class="row1">
+        <div class="desc">${i+1}. ${e.description}</div>
+        <div class="amt">$${Number(e.amount).toLocaleString()}</div>
+      </div>
+      <div class="meta">📅 ${e.expense_date}　${e.receipt_url ? '🧾 已上傳憑證' : '⚠️ 未上傳憑證'}</div>
+    </div>
+  `).join('');
+}
+
+function renderStatusBanners() {
+  const sub = submissions[currentMonth];
+  ['tripStatusBanner','expenseStatusBanner'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!sub) { el.innerHTML = ''; return; }
+    el.innerHTML = `<div class="status-banner ${sub.status}">${statusIcon(sub.status)} ${statusDesc(sub.status)}</div>`;
+  });
+}
+
+function updateStats() {
+  document.getElementById('statTripCount').textContent = trips.length;
+  const totalH = trips.reduce((s, t) => s + (Number(t.hours) || 0), 0);
+  document.getElementById('statHours').textContent = totalH;
+  const days = new Set(trips.map(t => t.trip_date)).size;
+  document.getElementById('statDays').textContent = days;
+}
+
+// ── 出差 Modal ──
+function openTripModal(id) {
+  editingTripId = id || null;
+  document.getElementById('editTripId').value = id || '';
+  document.getElementById('tripModalTitle').textContent = id ? '編輯出差登記' : '新增出差登記';
+  document.getElementById('deleteTripBtn').style.display = id ? 'block' : 'none';
+  // 清空 / 填入
+  const t = id ? trips.find(x => x.id === id) : null;
+  // date fields - try to parse back if editing
+  document.getElementById('tripDateStart').value = t?.trip_date_iso || '';
+  document.getElementById('tripDateEnd').value = t?.trip_date_iso_end || '';
+  const setTimeSel = (hId, mId, val) => {
+    if (val && val.length >= 4) {
+      document.getElementById(hId).value = parseInt(val.slice(0,2));
+      document.getElementById(mId).value = parseInt(val.slice(2,4));
+    }
+  };
+  setTimeSel('timeStartH','timeStartM', t?.time_start || '');
+  setTimeSel('timeEndH','timeEndM', t?.time_end || '');
+  const locVal = t?.location || '';
+  const sel = document.getElementById('tripLocation');
+  const knownOpts = [...sel.options].map(o=>o.value);
+  if (locVal && !knownOpts.includes(locVal)) {
+    sel.value = '__other__';
+    document.getElementById('tripLocationOther').style.display = 'block';
+    document.getElementById('tripLocationOther').value = locVal;
+  } else {
+    sel.value = locVal;
+    document.getElementById('tripLocationOther').style.display = 'none';
+  }
+  document.getElementById('tripPurpose').value = t?.purpose || '';
+  // 差別 chips
+  document.querySelectorAll('#tripTypeGroup .cb-chip').forEach(c => {
+    c.classList.toggle('sel', (t?.trip_types || []).includes(c.dataset.v));
+  });
+  calcHours();
+  document.getElementById('tripModal').classList.add('open');
+}
+function closeTripModal() { document.getElementById('tripModal').classList.remove('open'); }
+
+document.querySelectorAll('#tripTypeGroup .cb-chip').forEach(c => {
+  c.addEventListener('click', () => c.classList.toggle('sel'));
+});
+
+function calcHours() {
+  const sh = parseInt(document.getElementById('timeStartH').value);
+  const sm = parseInt(document.getElementById('timeStartM').value);
+  const eh = parseInt(document.getElementById('timeEndH').value);
+  const em = parseInt(document.getElementById('timeEndM').value);
+  if (!isNaN(sh) && !isNaN(sm) && !isNaN(eh) && !isNaN(em)) {
+    const mins = (eh * 60 + em) - (sh * 60 + sm);
+    if (mins > 0) {
+      const h = Math.floor(mins/60), m = mins%60;
+      document.getElementById('hoursDisplay').textContent = `時數：${h}小時${m>0?m+'分':''}（共${(mins/60).toFixed(1)}h）`;
+      return;
+    }
+  }
+  document.getElementById('hoursDisplay').textContent = '時數：請選擇時段';
+}
+
+async function saveTrip() {
+  const ds = document.getElementById('tripDateStart').value;
+  const de = document.getElementById('tripDateEnd').value;
+  if (!ds) { showToast('請選擇出差日期'); return; }
+  const fmtDate = (v) => {
+    const d = new Date(v + 'T00:00:00');
+    return `${d.getMonth()+1}月${d.getDate()}日`;
+  };
+  const date = de && de !== ds ? `${fmtDate(ds)}～${fmtDate(de)}` : fmtDate(ds);
+  // derive year_month from start date
+  const dsObj = new Date(ds + 'T00:00:00');
+  const rok = dsObj.getFullYear() - 1911;
+  const mo = String(dsObj.getMonth()+1).padStart(2,'0');
+  currentMonth = `${rok}${mo}`;
+  const types = [...document.querySelectorAll('#tripTypeGroup .cb-chip.sel')].map(c => c.dataset.v);
+  const shV = document.getElementById('timeStartH').value.padStart(2,'0');
+  const smV = document.getElementById('timeStartM').value.padStart(2,'0');
+  const ehV = document.getElementById('timeEndH').value.padStart(2,'0');
+  const emV = document.getElementById('timeEndM').value.padStart(2,'0');
+  const s = shV + smV;
+  const e = ehV + emV;
+  const purpose = document.getElementById('tripPurpose').value.trim();
+  if (!types.length || !s || !e || !purpose) { showToast('請填寫必填欄位'); return; }
+  const hours = ((parseInt(ehV)*60+parseInt(emV))-(parseInt(shV)*60+parseInt(smV)))/60;
+  const locSel = document.getElementById('tripLocation').value;
+  const locOther = document.getElementById('tripLocationOther').value.trim();
+  const location = locSel === '__other__' ? locOther : locSel;
+  const payload = {
+    supervisor_id: currentUser.id,
+    year_month: currentMonth,
+    trip_date: date,
+    trip_types: types,
+    time_start: s,
+    time_end: e,
+    hours,
+    location,
+    purpose,
+    updated_at: new Date().toISOString()
+  };
+  const id = document.getElementById('editTripId').value;
+  if (id) {
+    const { error: updErr } = await sb.from('trip_records').update(payload).eq('id', id);
+    if (updErr) { showToast('❌ 更新失敗：' + updErr.message); console.error(updErr); return; }
+    showToast('✅ 已更新');
+  } else {
+    const { error: insErr } = await sb.from('trip_records').insert(payload);
+    if (insErr) { showToast('❌ 新增失敗：' + insErr.message); console.error(insErr); return; }
+    showToast('✅ 已新增');
+  }
+  closeTripModal();
+  await loadAll();
+}
+
+async function deleteTrip() {
+  if (!confirm('確定刪除此出差記錄？')) return;
+  const id = document.getElementById('editTripId').value;
+  await sb.from('trip_records').delete().eq('id', id);
+  closeTripModal();
+  await loadTrips();
+  renderTrips();
+  updateStats();
+  showToast('已刪除');
+}
+
+// ── 費用 Modal ──
+function openExpenseModal(id) {
+  editingExpenseId = id || null;
+  const e = id ? expenses.find(x => x.id === id) : null;
+  document.getElementById('expenseModalTitle').textContent = id ? '編輯費用項目' : '新增費用項目';
+  document.getElementById('deleteExpenseBtn').style.display = id ? 'block' : 'none';
+  document.getElementById('editExpenseId').value = id || '';
+  // Try to parse stored date back to ISO for date input
+  if (e?.expense_date) {
+    const m = e.expense_date.match(/(\d+)月(\d+)日/);
+    if (m) {
+      const now = new Date();
+      const yr = now.getFullYear();
+      document.getElementById('expDate').value = `${yr}-${String(m[1]).padStart(2,'0')}-${String(m[2]).padStart(2,'0')}`;
+    } else {
+      document.getElementById('expDate').value = '';
+    }
+  } else {
+    document.getElementById('expDate').value = '';
+  }
+  document.getElementById('expDesc').value = e?.description || '';
+  document.getElementById('expAmount').value = e?.amount || '';
+  document.getElementById('expTax').value = e?.tax || '';
+  document.getElementById('expKm').value = e?.km || '';
+  if (e?.km) calcKmFee();
+  document.getElementById('receiptPreview').innerHTML = e?.receipt_url
+    ? `<div style="font-size:12px;color:var(--teal)">✅ 已有憑證</div>` : '';
+  document.getElementById('expenseModal').classList.add('open');
+}
+function closeExpenseModal() { document.getElementById('expenseModal').classList.remove('open'); }
+
+async function saveExpense() {
+  const dateRaw = document.getElementById('expDate').value;
+  const desc = document.getElementById('expDesc').value.trim();
+  const amount = Number(document.getElementById('expAmount').value) || 0;
+  if (!dateRaw || !desc || !amount) { showToast('請填寫必填欄位'); return; }
+  const date = dateRaw;
+  let receiptUrl = null;
+  const file = document.getElementById('expReceipt').files[0];
+  if (file) {
+    const path = `receipts/${currentUser.id}/${currentMonth}/${Date.now()}_${file.name}`;
+    const { data: up } = await sb.storage.from('receipts').upload(path, file, { upsert: true });
+    if (up) {
+      const { data: pu } = sb.storage.from('receipts').getPublicUrl(path);
+      receiptUrl = pu?.publicUrl;
+    }
+  }
+  const id = document.getElementById('editExpenseId').value;
+  const existing = id ? expenses.find(x => x.id === id) : null;
+  const payload = {
+    supervisor_id: currentUser.id,
+    year_month: currentMonth,
+    expense_date: (() => {
+      if (!date) return '';
+      const d = new Date(date + 'T00:00:00');
+      return `${d.getMonth()+1}月${d.getDate()}日`;
+    })(),
+    description: desc,
+    amount,
+    tax: Number(document.getElementById('expTax').value) || 0,
+    receipt_url: receiptUrl || existing?.receipt_url || null,
+    updated_at: new Date().toISOString()
+  };
+  if (id) {
+    const { error: updErr } = await sb.from('expense_items').update(payload).eq('id', id);
+    if (updErr) { showToast('❌ 更新失敗：' + updErr.message); console.error(updErr); return; }
+    showToast('✅ 已更新');
+  } else {
+    const { error: insErr } = await sb.from('expense_items').insert(payload);
+    if (insErr) { showToast('❌ 新增失敗：' + insErr.message); console.error(insErr); return; }
+    showToast('✅ 已新增');
+  }
+  closeExpenseModal();
+  await loadAll();
+}
+
+async function deleteExpense() {
+  if (!confirm('確定刪除此費用項目？')) return;
+  const id = document.getElementById('editExpenseId').value;
+  await sb.from('expense_items').delete().eq('id', id);
+  closeExpenseModal();
+  await loadExpenses();
+  renderExpenses();
+  showToast('已刪除');
+}
+
+// ── 送審 ──
+async function submitMonth() {
+  const sub = submissions[currentMonth];
+  if (sub && sub.status !== 'rejected') return;
+  if (!trips.length) { showToast('請先新增出差記錄'); return; }
+  if (!confirm(`確定送出 ${getMonthLabel(currentMonth)} 的出差單？\n送出後不可修改。`)) return;
+  const totalH = trips.reduce((s, t) => s + (Number(t.hours) || 0), 0);
+  const totalAmt = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  await sb.from('monthly_submissions').upsert({
+    supervisor_id: currentUser.id,
+    year_month: currentMonth,
+    status: 'submitted',
+    submitted_at: new Date().toISOString(),
+    total_hours: totalH,
+    total_amount: totalAmt
+  }, { onConflict: 'supervisor_id,year_month' });
+  // 更新所有出差/費用為 submitted
+  await sb.from('trip_records').update({ status: 'submitted' }).eq('supervisor_id', currentUser.id).eq('year_month', currentMonth);
+  await sb.from('expense_items').update({ status: 'submitted' }).eq('supervisor_id', currentUser.id).eq('year_month', currentMonth);
+  showToast('📤 已送審，等待主管核簽');
+  await loadAll();
+}
+
+// ── 審核（主管）──
+async function loadApproveList() {
+  document.getElementById('approveTitle').textContent =
+    currentUser.role === 'approver1' ? '待第一核簽' : '待執行長核簽';
+  const needStatus = currentUser.role === 'approver1' ? 'submitted' : 'approved1';
+  const list = document.getElementById('approveList');
+  list.innerHTML = '<div class="spinner"><span class="spin">⟳</span></div>';
+
+  // Load monthly submissions
+  const { data: subs, error: subErr } = await sb.from('monthly_submissions')
+    .select('*, supervisor_users(name)')
+    .eq('status', needStatus)
+    .order('submitted_at');
+
+  if (subErr) { console.error(subErr); }
+
+  // Also load all submitted trip records directly (in case submit button not pressed)
+  const { data: tripData } = await sb.from('trip_records')
+    .select('*, supervisor_users(name)')
+    .eq('status', 'submitted')
+    .order('created_at');
+
+  const hasSubs = subs && subs.length > 0;
+  const hasTrips = tripData && tripData.length > 0;
+
+  if (!hasSubs && !hasTrips) {
+    list.innerHTML = '<div class="empty-state"><div class="ico">✅</div><p>目前沒有待審核項目</p></div>';
+    return;
+  }
+
+  let html = '';
+
+  // Show monthly submissions
+  if (hasSubs) {
+    html += subs.map(s => `
+      <div class="approve-card">
+        <div class="sup-name">👤 ${s.supervisor_users?.name || s.supervisor_id}</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">月份整批送審</div>
+        <div class="info">📅 ${getMonthLabel(s.year_month)}　⏱ ${s.total_hours || 0}h　💰 $${Number(s.total_amount || 0).toLocaleString()}</div>
+        <div class="meta" style="font-size:11px;color:var(--text3);margin-top:2px">送審時間：${new Date(s.submitted_at).toLocaleString('zh-TW')}</div>
+        <div class="approve-actions">
+          <button class="btn-approve" onclick="doApprove('${s.id}','${s.supervisor_id}','${s.year_month}')">✅ 核准</button>
+          <button class="btn-reject" onclick="doReject('${s.id}','${s.supervisor_id}','${s.year_month}')">❌ 退回</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Show individual submitted trips (grouped by supervisor)
+  if (hasTrips) {
+    const grouped = {};
+    tripData.forEach(t => {
+      const key = t.supervisor_id;
+      if (!grouped[key]) grouped[key] = { name: t.supervisor_users?.name || t.supervisor_id, trips: [] };
+      grouped[key].trips.push(t);
+    });
+    Object.values(grouped).forEach(g => {
+      const totalH = g.trips.reduce((s,t) => s + Number(t.hours||0), 0);
+      html += `
+        <div class="approve-card">
+          <div class="sup-name">👤 ${g.name}</div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px">個別出差單</div>
+          <div class="info">共 ${g.trips.length} 筆　⏱ ${totalH}h</div>
+          ${g.trips.map(t => `
+            <div style="font-size:12px;color:var(--text2);margin-top:6px;padding:6px 8px;background:var(--bg);border-radius:6px">
+              📅 ${t.trip_date}　${(t.trip_types||[]).join('/')}　${t.location||''}
+              <div style="font-size:11px;color:var(--text3)">${t.purpose}</div>
+            </div>`).join('')}
+        </div>`;
+    });
+  }
+
+  list.innerHTML = html;
+}
+
+async function doApprove(subId, supId, ym) {
+  const newStatus = currentUser.role === 'approver1' ? 'approved1' : 'approved2';
+  const timeField = currentUser.role === 'approver1' ? 'approved1_at' : 'approved2_at';
+  await sb.from('monthly_submissions').update({
+    status: newStatus,
+    [timeField]: new Date().toISOString()
+  }).eq('id', subId);
+  await sb.from('approvals').insert({
+    approver_id: currentUser.id,
+    record_type: 'trip',
+    record_id: subId,
+    action: 'approve'
+  });
+  // 若是最終核准，更新記錄狀態
+  if (newStatus === 'approved2') {
+    await sb.from('trip_records').update({ status: 'approved2' }).eq('supervisor_id', supId).eq('year_month', ym);
+    await sb.from('expense_items').update({ status: 'approved2' }).eq('supervisor_id', supId).eq('year_month', ym);
+  }
+  showToast('✅ 已核准');
+  loadApproveList();
+}
+
+async function doReject(subId, supId, ym) {
+  const reason = prompt('退回原因（選填）：') || '';
+  await sb.from('monthly_submissions').update({
+    status: 'rejected',
+    rejected_at: new Date().toISOString(),
+    reject_reason: reason
+  }).eq('id', subId);
+  await sb.from('trip_records').update({ status: 'rejected' }).eq('supervisor_id', supId).eq('year_month', ym);
+  await sb.from('expense_items').update({ status: 'rejected' }).eq('supervisor_id', supId).eq('year_month', ym);
+  showToast('已退回');
+  loadApproveList();
+}
+
+// ── 月曆 ──
+function renderCalendar() {
+  const y = calViewYear, m = calViewMonth;
+  document.getElementById('calTitle').textContent = `${y - 1911}年${String(m+1).padStart(2,'0')}月`;
+  const first = new Date(y, m, 1).getDay();
+  const days = new Date(y, m+1, 0).getDate();
+  const today = new Date();
+  const grid = document.getElementById('calGrid');
+  // Remove old day cells (keep 8 header cells: 7 day headers)
+  const headers = [...grid.querySelectorAll('.cal-header')];
+  grid.innerHTML = '';
+  headers.forEach(h => grid.appendChild(h));
+  // Add blank cells for offset
+  for (let i = 0; i < first; i++) {
+    const el = document.createElement('div');
+    el.className = 'cal-day other';
+    grid.appendChild(el);
+  }
+  // Add day cells
+  for (let d = 1; d <= days; d++) {
+    const isToday = today.getFullYear()===y && today.getMonth()===m && today.getDate()===d;
+    const hasTrip = trips.some(t => t.trip_date.includes(`${m+1}月${d}日`) || t.trip_date.includes(`${m+1}/${d}`));
+    const hasExp = expenses.some(e => e.expense_date && (e.expense_date.includes(`${m+1}月${d}日`) || e.expense_date.includes(`${m+1}/${d}`)));
+    const cls = hasTrip && hasExp ? 'has-both' : hasTrip ? 'has-trip' : hasExp ? 'has-expense' : '';
+    const el = document.createElement('div');
+    el.className = `cal-day ${cls}`;
+    el.onclick = () => showCalDay(d);
+    if (isToday) {
+      el.innerHTML = `<div class="day-num">${d}</div>${hasTrip ? '<div class="cal-dot">●</div>' : ''}`;
+    } else {
+      el.innerHTML = `${d}${hasTrip ? '<div class="cal-dot">●</div>' : ''}`;
+    }
+    grid.appendChild(el);
+  }
+}
+
+function prevMonth() { calViewMonth--; if (calViewMonth<0){calViewMonth=11;calViewYear--;} renderCalendar(); }
+function nextMonth() { calViewMonth++; if (calViewMonth>11){calViewMonth=0;calViewYear++;} renderCalendar(); }
+
+function showCalDay(d) {
+  const m = calViewMonth, y = calViewYear;
+  const dayTrips = trips.filter(t => t.trip_date.includes(`${m+1}月${d}日`));
+  const dayExps  = expenses.filter(e => e.expense_date.includes(`${m+1}月${d}日`));
+  const el = document.getElementById('calDayDetail');
+  if (!dayTrips.length && !dayExps.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div style="background:var(--card);border-radius:10px;border:1px solid var(--border);padding:12px;margin-top:6px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px">${m+1}月${d}日</div>
+      ${dayTrips.map(t=>`<div style="font-size:12px;color:var(--text2);margin-bottom:4px">🗓 ${t.purpose}（${t.hours}h）</div>`).join('')}
+      ${dayExps.map(e=>`<div style="font-size:12px;color:var(--text2)">💰 ${e.description} $${Number(e.amount).toLocaleString()}</div>`).join('')}
+    </div>`;
+}
+
+// ── 匯出（列印用 HTML 預覽）──
+function exportTripTable() {
+  if (!trips.length) { showToast('沒有出差記錄可匯出'); return; }
+  const sup = currentUser.name;
+  const ml = getMonthLabel(currentMonth);
+  const rows = trips.map((t,i)=>`
+    <tr>
+      <td>${t.trip_date}</td>
+      <td>${(t.trip_types||[]).join('/')}</td>
+      <td>${t.time_start}–${t.time_end}</td>
+      <td>${t.hours}</td>
+      <td>${t.location||''}</td>
+      <td>${t.purpose}</td>
+    </tr>`).join('');
+  const totalH = trips.reduce((s,t)=>s+Number(t.hours||0),0);
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html lang="zh-TW"><head><meta charset="UTF-8">
+  <title>${sup} 出差登記表</title>
+  <style>
+    body{font-family:'PingFang TC',sans-serif;padding:24px;font-size:13px}
+    h2{text-align:center;margin-bottom:4px}
+    p{text-align:center;color:#666;margin-bottom:16px}
+    table{width:100%;border-collapse:collapse}
+    th{background:#30386B;color:#fff;padding:7px 8px;text-align:left}
+    td{padding:6px 8px;border-bottom:1px solid #eee}
+    tr:nth-child(even){background:#f9f9f7}
+    .total{margin-top:12px;text-align:right;font-weight:600}
+    .sign{display:flex;justify-content:space-between;margin-top:40px;font-size:13px;color:#666}
+    @media print{button{display:none}}
+  </style></head><body>
+  <h2>墨竹亭總公司出差登記表</h2>
+  <p>${ml}　填寫人：${sup}</p>
+  <table><thead><tr><th>日期</th><th>差別</th><th>時段</th><th>時數</th><th>地點</th><th>事由</th></tr></thead>
+  <tbody>${rows}</tbody></table>
+  <div class="total">合計：${totalH} 小時</div>
+  <div class="sign"><span>核準：謝政倫 ___________</span><span>執行長：沈俊賢 ___________</span><span>申請人：${sup} ___________</span></div>
+  <br><button onclick="window.print()">🖨 列印</button>
+  </body></html>`);
+  w.document.close();
+}
+
+function exportExpenseXlsx() {
+  showToast('💡 功能開發中，請先用列印方式');
+  // TODO: 可整合 SheetJS 產生 XLSX
+}
+
+// ── Tab 切換 ──
+const pages = ['trip','expense','calendar','approve','export'];
+const pageIds = ['pageTrip','pageExpense','pageCalendar','pageApprove','pageExport'];
+let activeTab = 0;
+function switchTab(name, idx) {
+  document.querySelectorAll('.page').forEach((p,i)=>p.classList.toggle('active', i===idx));
+  document.querySelectorAll('.tab-item').forEach((t,i)=>t.classList.toggle('active', i===idx));
+  activeTab = idx;
+  if (name === 'calendar') {
+    calViewYear = new Date().getFullYear();
+    calViewMonth = new Date().getMonth();
+    renderCalendar();
+  }
+  if (name === 'approve') loadApproveList();
+}
+
+// ── 工具 ──
+function badgeHtml(status) {
+  const map = {
+    draft: ['badge-draft','草稿'],
+    submitted: ['badge-sub','待審核'],
+    approved1: ['badge-ap1','第一核簽'],
+    approved2: ['badge-done','✅ 核准'],
+    rejected:  ['badge-reject','⚠️ 退回']
+  };
+  const [cls, label] = map[status] || ['badge-draft','草稿'];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+function statusLabel(s) {
+  return {draft:'草稿',submitted:'已送審（待謝政倫）',approved1:'謝政倫已核，待沈俊賢',approved2:'完成核准',rejected:'已退回'}[s]||s;
+}
+function statusIcon(s) {
+  return {draft:'📝',submitted:'⏳',approved1:'✅',approved2:'🎉',rejected:'⚠️'}[s]||'';
+}
+function statusDesc(s) {
+  return {
+    submitted:'已送審，等待謝政倫核簽',
+    approved1:'謝政倫已核簽，等待沈俊賢核准',
+    approved2:'✅ 本月出差單已完成核准',
+    rejected:'⚠️ 已被退回，請修改後重新送審'
+  }[s]||'';
+}
+
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove('show'), 2200);
+}
+
+// ── 公里費用計算 ──
+function calcKmFee() {
+  const km = Number(document.getElementById('expKm').value) || 0;
+  const hint = document.getElementById('kmFeeHint');
+  if (km > 0) {
+    const fee = Math.round(km * 4.5); // 4.5元/km 公司補助標準
+    hint.style.display = 'block';
+    hint.textContent = `交通補助：$${fee.toLocaleString()}（${km}km × $4.5）`;
+    document.getElementById('expAmount').value = fee;
+  } else {
+    hint.style.display = 'none';
+  }
+}
+
+// ── 分店選單切換其他 ──
+document.getElementById('tripLocation').addEventListener('change', function() {
+  const other = document.getElementById('tripLocationOther');
+  other.style.display = this.value === '__other__' ? 'block' : 'none';
+});
+
+// ── 初始化時間選單 ──
+function initTimeSelects() {
+  const hours = Array.from({length:24},(_,i)=>i);
+  const mins = [0,10,15,20,30,45];
+  ['timeStartH','timeEndH'].forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = '<option value="">時</option>' +
+      hours.map(h=>`<option value="${h}">${String(h).padStart(2,'0')}</option>`).join('');
+    sel.value = id.includes('Start') ? 9 : 18;
+  });
+  ['timeStartM','timeEndM'].forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = '<option value="">分</option>' +
+      mins.map(m=>`<option value="${m}">${String(m).padStart(2,'0')}</option>`).join('');
+    sel.value = 0;
+  });
+}
+initTimeSelects();
+
+// ── 點擊遮罩關閉 ──
+document.querySelectorAll('.modal-overlay').forEach(o=>{
+  o.addEventListener('click', e=>{ if(e.target===o) o.classList.remove('open'); });
+});
+</script>
+</body>
+</html>
