@@ -1,0 +1,3072 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="工程待辦">
+<meta name="theme-color" content="#1a1a18">
+<title>墨竹亭 工程待辦｜雲端同步</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700;900&family=Noto+Sans+TC:wght@400;500;700&family=DM+Mono:wght@500&display=swap');
+:root{
+  --ink:#1a1a18; --bamboo:#4a7c59; --bamboo-l:#6aab7c; --bamboo-p:#e8f3eb; --bamboo-d:#2f5a3f;
+  --gold:#c49a3c; --gold-p:#fdf4de;
+  --red:#c0392b; --red-p:#fdecea;
+  --stone:#f5f2ec; --stone-d:#e2ddd4;
+  --mist:#8a9a8c; --white:#fff;
+  --shadow:0 2px 10px rgba(0,0,0,0.10);
+  --nav-h:64px; --header-h:58px;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;font-family:'Noto Sans TC',sans-serif;background:var(--stone);color:var(--ink);overscroll-behavior:none;}
+
+/* ── HEADER ── */
+.app-header{
+  position:fixed;top:0;left:0;right:0;z-index:300;
+  height:var(--header-h);background:var(--ink);
+  display:flex;align-items:center;gap:10px;
+  padding:0 14px;padding-top:env(safe-area-inset-top,0px);
+  box-shadow:0 2px 12px rgba(0,0,0,.4);
+}
+.logo{width:36px;height:36px;border-radius:9px;background:var(--bamboo);display:flex;align-items:center;justify-content:center;font-family:'Noto Serif TC',serif;font-size:19px;font-weight:900;color:#fff;flex-shrink:0;}
+.header-t{flex:1;min-width:0;}
+.header-t h1{font-family:'Noto Serif TC',serif;font-size:14px;font-weight:700;color:#fff;letter-spacing:1px;}
+.header-t p{font-size:9px;color:var(--mist);letter-spacing:2px;margin-top:1px;}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--mist);flex-shrink:0;transition:background .3s;}
+.sync-dot.ok{background:#4ade80;}
+.sync-dot.err{background:var(--red);}
+.sync-dot.loading{background:var(--gold);animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+
+/* ── CALENDAR ── */
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.cal-month{font-family:'Noto Serif TC',serif;font-size:16px;font-weight:700;}
+.cal-nav{background:var(--white);border:1.5px solid var(--stone-d);border-radius:8px;padding:6px 12px;font-size:14px;cursor:pointer;font-family:'Noto Sans TC',sans-serif;}
+.cal-nav:active{background:var(--stone-d);}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:14px;}
+.cal-dow{text-align:center;font-size:10px;font-weight:700;color:var(--mist);padding:4px 0;}
+.cal-dow.sun{color:var(--red);}
+.cal-dow.sat{color:#1a56cc;}
+.cal-cell{min-height:52px;border-radius:8px;padding:3px;background:var(--white);border:1px solid var(--stone-d);cursor:pointer;position:relative;transition:background .12s;}
+.cal-cell:active{background:var(--bamboo-p);}
+.cal-cell.today{border-color:var(--bamboo);border-width:2px;}
+.cal-cell.other-month{background:#fafafa;opacity:.5;}
+.cal-cell.has-task{background:#f0fbf5;}
+.cal-cell.has-holiday{background:#fdecea !important;border-color:#c0392b !important;}
+.cal-cell.has-holiday .cal-date{color:#c0392b !important;font-weight:900;}
+.cal-cell.has-admin{background:#e8f0fe !important;border-color:#1a56cc !important;}
+.cal-cell.has-admin .cal-date{color:#1a56cc !important;font-weight:900;}
+.cal-cell.has-holiday.today{border-width:2px;}
+.cal-cell.has-admin.today{border-width:2px;}
+.cal-date{font-size:11px;font-weight:700;color:var(--ink);line-height:1;margin-bottom:2px;}
+.cal-cell.today .cal-date{color:var(--bamboo);}
+.cal-cell.other-month .cal-date{color:var(--mist);}
+.cal-dots{display:flex;flex-wrap:wrap;gap:2px;margin-top:2px;}
+.cal-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.cal-task-count{font-size:9px;font-weight:700;color:var(--bamboo);line-height:1;}
+.cal-day-panel{background:var(--white);border-radius:12px;border:1px solid var(--stone-d);padding:14px;margin-bottom:14px;display:none;}
+.cal-day-panel.open{display:block;}
+.cal-day-title{font-family:'Noto Serif TC',serif;font-size:15px;font-weight:700;margin-bottom:10px;color:var(--bamboo);}
+.cal-task-item{display:flex;align-items:flex-start;gap:9px;padding:10px 0;border-bottom:1px solid var(--stone-d);font-size:13px;}
+.cal-task-item:last-child{border-bottom:none;}
+.cal-task-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.cal-task-info{flex:1;}
+.cal-task-name{font-weight:600;line-height:1.35;}
+.cal-task-name.done{text-decoration:line-through;color:var(--mist);}
+.cal-task-sub{font-size:10px;color:var(--mist);margin-top:2px;}
+.cat-color-map{display:none;}
+.view-toggle{display:flex;gap:6px;margin-bottom:14px;}
+.view-toggle-btn{flex:1;padding:8px;border-radius:8px;font-size:12px;font-weight:700;border:1.5px solid var(--stone-d);background:var(--white);color:var(--mist);cursor:pointer;font-family:'Noto Sans TC',sans-serif;}
+.view-toggle-btn.active{background:var(--bamboo);color:white;border-color:var(--bamboo);}
+
+
+/* ── VENDOR OTHER & FILE UPLOAD ── */
+.upload-area{border:2px dashed var(--stone-d);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;background:var(--stone);margin-top:2px;}
+.upload-area:active,.upload-area.drag{border-color:var(--bamboo);background:var(--bamboo-p);}
+.upload-icon{font-size:26px;margin-bottom:4px;}
+.upload-text{font-size:12px;color:var(--mist);line-height:1.6;}
+.file-list{margin-top:8px;display:flex;flex-direction:column;gap:6px;}
+.file-item{display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--stone-d);border-radius:8px;padding:8px 10px;}
+.file-icon{font-size:16px;flex-shrink:0;}
+.file-name{flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.file-size{font-size:10px;color:var(--mist);flex-shrink:0;}
+.file-del{background:none;border:none;color:var(--mist);font-size:15px;cursor:pointer;padding:0 2px;flex-shrink:0;}
+.file-preview-img{width:100%;max-height:150px;object-fit:cover;border-radius:8px;margin-top:6px;}
+.attach-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;padding:0 0 4px;}
+.attach-thumb{width:60px;height:60px;border-radius:8px;object-fit:cover;border:1px solid var(--stone-d);cursor:pointer;}
+.attach-pdf{display:inline-flex;align-items:center;gap:4px;background:var(--stone);border:1px solid var(--stone-d);border-radius:8px;padding:5px 9px;font-size:11px;color:var(--ink);text-decoration:none;max-width:140px;overflow:hidden;}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;}
+.lightbox img{max-width:100%;max-height:90vh;border-radius:8px;}
+.lightbox-close{position:absolute;top:16px;right:16px;color:white;font-size:30px;cursor:pointer;line-height:1;}
+
+
+/* ── JOURNAL & TRIP ── */
+.journal-date-header{font-family:'Noto Serif TC',serif;font-size:15px;font-weight:700;color:var(--bamboo);padding:10px 0 6px;border-bottom:2px solid var(--bamboo-p);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.journal-card{background:var(--white);border-radius:12px;border:1px solid var(--stone-d);margin-bottom:12px;overflow:hidden;box-shadow:var(--shadow);}
+.journal-card-head{padding:12px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;border-bottom:1px solid var(--stone-d);}
+.journal-card-head:active{background:var(--bamboo-p);}
+.journal-date-label{font-weight:700;font-size:14px;flex:1;}
+.journal-count{font-size:11px;color:var(--mist);}
+.journal-arrow{font-size:11px;color:var(--mist);transition:transform .2s;}
+.journal-card.open .journal-arrow{transform:rotate(180deg);}
+.journal-body{display:none;padding:12px 14px;}
+.journal-card.open .journal-body{display:block;}
+.journal-done-item{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--stone-d);font-size:13px;}
+.journal-done-item:last-child{border-bottom:none;}
+.journal-check{width:18px;height:18px;border-radius:5px;background:var(--bamboo);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+.journal-check.pending{background:var(--stone-d);}
+.journal-check::after{content:'✓';color:white;font-size:11px;font-weight:700;}
+.journal-task-info{flex:1;}
+.journal-task-name{font-weight:600;text-decoration:line-through;color:var(--mist);}
+.journal-task-sub{font-size:10px;color:var(--mist);margin-top:1px;}
+.journal-note{margin-top:10px;padding-top:10px;border-top:1px solid var(--stone-d);}
+.journal-note-label{font-size:10px;font-weight:700;color:var(--bamboo);letter-spacing:1px;margin-bottom:4px;}
+.journal-note-text{font-size:13px;color:#444;line-height:1.6;white-space:pre-wrap;}
+.journal-note-input{width:100%;padding:10px;background:var(--stone);border:1.5px solid var(--stone-d);border-radius:8px;font-family:'Noto Sans TC',sans-serif;font-size:13px;color:var(--ink);resize:vertical;min-height:72px;outline:none;}
+.journal-note-input:focus{border-color:var(--bamboo);}
+.journal-save-btn{margin-top:8px;background:var(--bamboo);color:white;border:none;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:700;font-family:'Noto Sans TC',sans-serif;cursor:pointer;}
+
+/* TIME PICKER */
+.time-picker-row{display:flex;gap:10px;align-items:center;}
+.time-drum-wrap{flex:1;position:relative;height:120px;overflow:hidden;border-radius:10px;background:var(--stone);border:1.5px solid var(--stone-d);}
+.time-drum-wrap::before,.time-drum-wrap::after{content:'';position:absolute;left:0;right:0;height:40px;z-index:2;pointer-events:none;}
+.time-drum-wrap::before{top:0;background:linear-gradient(to bottom,var(--stone),transparent);}
+.time-drum-wrap::after{bottom:0;background:linear-gradient(to top,var(--stone),transparent);}
+.time-drum-select{width:100%;height:120px;border:none;background:transparent;font-size:18px;font-weight:700;color:var(--ink);font-family:'DM Mono',monospace;text-align:center;-webkit-appearance:none;outline:none;padding:0;}
+.time-drum-select option{padding:8px;font-size:16px;}
+.time-colon{font-size:24px;font-weight:700;color:var(--mist);}
+.time-label{font-size:10px;text-align:center;color:var(--mist);font-weight:600;letter-spacing:1px;margin-top:3px;}
+
+/* TRIP CARD */
+
+
+/* ── EXPENSE ── */
+.expense-section{margin-top:2px;}
+.expense-transport-row{display:flex;flex-direction:column;gap:10px;}
+.transport-item{background:var(--stone);border-radius:10px;padding:12px 13px;border:1.5px solid var(--stone-d);transition:border-color .15s;}
+.transport-item.active{border-color:var(--bamboo);background:var(--bamboo-p);}
+.transport-head{display:flex;align-items:center;gap:10px;cursor:pointer;}
+.transport-icon{font-size:20px;flex-shrink:0;}
+.transport-name{font-size:14px;font-weight:700;flex:1;}
+.transport-toggle{width:24px;height:24px;border-radius:6px;border:2px solid var(--stone-d);background:var(--white);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;}
+.transport-item.active .transport-toggle{background:var(--bamboo);border-color:var(--bamboo);}
+.transport-item.active .transport-toggle::after{content:'✓';color:white;font-size:12px;font-weight:700;}
+.transport-inputs{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--stone-d);gap:8px;display:none;flex-wrap:wrap;}
+.transport-item.active .transport-inputs{display:flex;}
+.transport-input-group{display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px;}
+.transport-input-label{font-size:10px;font-weight:700;color:var(--mist);letter-spacing:1px;}
+.transport-input{padding:9px 12px;background:var(--white);border:1.5px solid var(--stone-d);border-radius:8px;font-family:'Noto Sans TC',sans-serif;font-size:14px;color:var(--ink);outline:none;width:100%;}
+.transport-input:focus{border-color:var(--bamboo);}
+.expense-total{background:var(--bamboo-p);border:1.5px solid var(--bamboo);border-radius:10px;padding:11px 14px;margin-top:10px;display:flex;align-items:center;justify-content:space-between;}
+.expense-total-label{font-size:12px;color:var(--bamboo-d);font-weight:600;}
+.expense-total-amount{font-family:'DM Mono',monospace;font-size:18px;font-weight:700;color:var(--bamboo);}
+
+/* ── TRIP REPORT ── */
+.trip-month-group{margin-bottom:16px;}
+.trip-month-group-head{font-size:10px;font-weight:700;color:var(--bamboo);letter-spacing:2px;padding:6px 0 8px;text-transform:uppercase;}
+
+.trip-card{background:var(--white);border-radius:13px;border:1px solid var(--stone-d);margin-bottom:12px;overflow:hidden;box-shadow:var(--shadow);}
+.trip-card-head{padding:13px 14px;display:flex;align-items:center;gap:10px;}
+.trip-badge{background:var(--bamboo-p);color:var(--bamboo);font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;}
+.trip-date{font-size:12px;color:var(--mist);}
+.trip-destination{font-weight:700;font-size:14px;flex:1;}
+.trip-receipt-thumb{width:48px;height:48px;border-radius:8px;object-fit:cover;border:1px solid var(--stone-d);cursor:pointer;flex-shrink:0;}
+.trip-body{border-top:1px solid var(--stone-d);padding:12px 14px;font-size:12px;color:#555;line-height:1.7;}
+.trip-time-row{display:flex;gap:8px;align-items:center;margin-bottom:6px;font-size:13px;font-weight:600;}
+.trip-purpose{color:#444;line-height:1.6;}
+
+
+/* ── SUPPORT SHEET ── */
+.cal-cell.has-support{background:#fffbe6 !important;border-color:#c49a3c !important;}
+.cal-cell.has-support .cal-date{color:#8a6010 !important;font-weight:900;}
+.meal-toggle-row{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--stone);border-radius:10px;border:1.5px solid var(--stone-d);cursor:pointer;transition:all .15s;margin-bottom:10px;}
+.meal-toggle-row.active{background:#fff3cd;border-color:var(--gold);}
+.meal-icon{font-size:20px;}
+.meal-label{flex:1;font-size:14px;font-weight:700;}
+.meal-amount{font-size:13px;font-weight:700;color:var(--gold);}
+.meal-check{width:24px;height:24px;border-radius:7px;border:2px solid var(--stone-d);background:var(--white);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;}
+.meal-toggle-row.active .meal-check{background:var(--gold);border-color:var(--gold);}
+.meal-toggle-row.active .meal-check::after{content:'✓';color:white;font-size:13px;font-weight:700;}
+
+/* ── SCROLL ── */
+.scroll-area{position:fixed;top:var(--header-h);bottom:calc(var(--nav-h) + var(--safe-b));left:0;right:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+
+/* ── VIEWS ── */
+.view{display:none;padding:14px 13px 24px;}
+.view.active{display:block;}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;z-index:300;
+  height:calc(var(--nav-h) + var(--safe-b));padding-bottom:var(--safe-b);
+  background:var(--ink);display:flex;align-items:stretch;
+  border-top:1px solid rgba(255,255,255,.07);
+  box-shadow:0 -2px 16px rgba(0,0,0,.3);
+}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;color:var(--mist);font-size:9px;font-weight:500;transition:color .15s;position:relative;padding:6px 0;}
+.nav-item::before{content:'';position:absolute;top:0;left:20%;right:20%;height:2px;background:var(--bamboo-l);border-radius:0 0 3px 3px;transform:scaleX(0);transition:transform .2s;}
+.nav-item.active::before{transform:scaleX(1);}
+.nav-item.active{color:var(--bamboo-l);}
+.nav-icon{font-size:20px;line-height:1;}
+
+/* ── STORE SELECT ── */
+.store-label{font-size:11px;color:var(--mist);font-weight:600;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase;}
+.store-select{width:100%;padding:13px 14px;background:var(--white);border:1.5px solid var(--stone-d);border-radius:11px;font-family:'Noto Sans TC',sans-serif;font-size:14px;font-weight:700;color:var(--ink);-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238a9a8c' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;box-shadow:var(--shadow);margin-bottom:14px;}
+
+/* ── CAT PILLS ── */
+.cat-pills{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px;}
+.cat-pill{padding:7px 13px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:2px solid transparent;transition:all .15s;white-space:nowrap;}
+.cat-pill.active{background:var(--bamboo);color:#fff;border-color:var(--bamboo);}
+.cat-pill:not(.active){background:var(--white);color:var(--bamboo);border-color:var(--stone-d);}
+
+/* ── STATS ── */
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+.stat-card{background:var(--white);border-radius:11px;padding:12px 10px;border:1px solid var(--stone-d);box-shadow:var(--shadow);text-align:center;}
+.stat-n{font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:var(--bamboo);line-height:1;}
+.stat-l{font-size:10px;color:var(--mist);margin-top:2px;}
+.prog-wrap{margin-bottom:14px;}
+.prog-info{display:flex;justify-content:space-between;font-size:11px;color:var(--mist);margin-bottom:4px;}
+.prog-bar{height:7px;background:var(--stone-d);border-radius:4px;overflow:hidden;}
+.prog-fill{height:100%;background:var(--bamboo);border-radius:4px;transition:width .4s;}
+
+/* ── TODO SECTIONS ── */
+.todo-section{margin-bottom:16px;}
+.todo-section-head{display:flex;align-items:center;justify-content:space-between;background:var(--bamboo);color:#fff;padding:10px 13px;border-radius:10px 10px 0 0;font-size:13px;font-weight:700;}
+.section-badge{background:rgba(255,255,255,.2);padding:2px 9px;border-radius:10px;font-size:10px;font-weight:700;}
+.todo-items{background:var(--white);border:1px solid var(--stone-d);border-top:none;border-radius:0 0 10px 10px;}
+
+/* ── TODO ITEM ── */
+.todo-item{display:flex;align-items:flex-start;gap:11px;padding:13px 13px;border-bottom:1px solid var(--stone-d);cursor:pointer;transition:background .12s;min-height:56px;}
+.todo-item:last-child{border-bottom:none;}
+.todo-item:active{background:var(--bamboo-p);}
+.todo-item.done{background:#fafafa;}
+.todo-cb{width:24px;height:24px;border-radius:7px;border:2px solid var(--stone-d);background:var(--white);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;transition:all .15s;}
+.todo-item.done .todo-cb{background:var(--bamboo);border-color:var(--bamboo);}
+.todo-item.done .todo-cb::after{content:'✓';color:#fff;font-size:13px;font-weight:700;}
+.todo-main{flex:1;min-width:0;}
+.todo-name{font-size:14px;font-weight:700;line-height:1.35;margin-bottom:3px;}
+.todo-item.done .todo-name{text-decoration:line-through;color:var(--mist);}
+.todo-detail{font-size:12px;color:#777;line-height:1.5;margin-top:2px;}
+.todo-meta{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;}
+.meta-tag{font-size:10px;padding:2px 8px;border-radius:8px;font-weight:600;}
+.meta-vendor{background:#e8f0fe;color:#1a56cc;}
+.meta-date{background:var(--gold-p);color:#8a6010;}
+.meta-date.overdue{background:var(--red-p);color:var(--red);}
+.meta-date.soon{background:#fff3cd;color:#7a5a00;}
+.btn-edit{background:var(--stone);border:none;border-radius:7px;padding:6px 9px;font-size:12px;cursor:pointer;color:var(--mist);flex-shrink:0;}
+
+/* ── FAB ── */
+.fab{position:fixed;right:16px;bottom:calc(var(--nav-h) + var(--safe-b) + 14px);z-index:200;width:54px;height:54px;border-radius:50%;background:var(--bamboo);color:#fff;border:none;font-size:26px;cursor:pointer;box-shadow:0 4px 18px rgba(74,124,89,.5);display:flex;align-items:center;justify-content:center;transition:transform .15s;}
+.fab:active{transform:scale(.93);}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;}
+.modal-overlay.open{opacity:1;pointer-events:all;}
+.modal-box{background:var(--white);border-radius:20px 20px 0 0;padding:20px 16px;padding-bottom:calc(20px + var(--safe-b));width:100%;max-width:560px;max-height:88vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);}
+.modal-overlay.open .modal-box{transform:translateY(0);}
+.modal-handle{width:40px;height:4px;background:var(--stone-d);border-radius:2px;margin:0 auto 16px;}
+.modal-title{font-family:'Noto Serif TC',serif;font-size:17px;font-weight:700;margin-bottom:16px;}
+.form-group{margin-bottom:13px;}
+.form-label{font-size:11px;font-weight:700;color:var(--mist);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;display:block;}
+.form-input,.form-select,.form-textarea{width:100%;padding:12px 13px;background:var(--stone);border:1.5px solid var(--stone-d);border-radius:10px;font-family:'Noto Sans TC',sans-serif;font-size:14px;color:var(--ink);outline:none;transition:border-color .15s;}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--bamboo);}
+.form-textarea{resize:vertical;min-height:72px;}
+.form-select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238a9a8c' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-color:var(--stone);}
+.btn-row{display:flex;gap:8px;margin-bottom:10px;}
+.btn-primary{flex:1;background:var(--bamboo);color:#fff;border:none;padding:14px;border-radius:11px;font-size:14px;font-weight:700;font-family:'Noto Sans TC',sans-serif;cursor:pointer;min-height:50px;}
+.btn-primary:active{background:var(--bamboo-d);}
+.btn-primary:disabled{background:var(--mist);cursor:not-allowed;}
+.btn-secondary{flex:1;background:var(--stone);color:var(--ink);border:1.5px solid var(--stone-d);padding:14px;border-radius:11px;font-size:14px;font-weight:700;font-family:'Noto Sans TC',sans-serif;cursor:pointer;min-height:50px;}
+.btn-danger{width:100%;background:var(--red-p);color:var(--red);border:1.5px solid var(--red);padding:12px;border-radius:10px;font-size:13px;font-weight:700;font-family:'Noto Sans TC',sans-serif;cursor:pointer;}
+
+/* ── SUMMARY ── */
+.summary-store{background:var(--white);border-radius:13px;border:1px solid var(--stone-d);margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow);}
+.summary-store-head{padding:13px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;}
+.summary-store-head:active{background:var(--bamboo-p);}
+.ss-name{font-weight:700;font-size:14px;flex:1;}
+.ss-pct{font-family:'DM Mono',monospace;font-size:12px;font-weight:700;}
+.ss-arrow{font-size:11px;color:var(--mist);transition:transform .2s;flex-shrink:0;}
+.summary-store.open .ss-arrow{transform:rotate(180deg);}
+.summary-body{display:none;border-top:1px solid var(--stone-d);}
+.summary-store.open .summary-body{display:block;}
+.summary-item{display:flex;align-items:flex-start;gap:9px;padding:10px 14px;border-bottom:1px solid var(--stone-d);font-size:13px;}
+.summary-item:last-child{border-bottom:none;}
+.si-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.si-dot.done{background:var(--bamboo);}
+.si-dot.pending{background:var(--stone-d);}
+.si-info{flex:1;}
+.si-name{line-height:1.4;}
+.si-name.done{text-decoration:line-through;color:var(--mist);}
+.si-sub{font-size:10px;color:var(--mist);margin-top:2px;}
+.si-date{font-size:10px;color:var(--mist);flex-shrink:0;}
+
+/* ── VENDOR CARDS ── */
+.vendor-card{background:var(--white);border-radius:12px;border:1px solid var(--stone-d);padding:14px;margin-bottom:10px;box-shadow:var(--shadow);}
+.vendor-head{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.vendor-type{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;}
+.vendor-name{font-weight:700;font-size:15px;flex:1;}
+.vendor-tasks{font-size:11px;color:var(--bamboo);font-weight:700;}
+.vendor-note{font-size:12px;color:var(--mist);}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:calc(var(--nav-h) + var(--safe-b) + 80px);left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;font-weight:500;z-index:600;opacity:0;transition:all .3s;white-space:nowrap;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ── LOADING SPINNER ── */
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── EMPTY / ALERT ── */
+.empty{text-align:center;padding:48px 20px;color:var(--mist);}
+.empty-icon{font-size:40px;margin-bottom:10px;}
+.empty-text{font-size:14px;line-height:1.7;}
+.alert-info{background:var(--bamboo-p);border-left:4px solid var(--bamboo);border-radius:0 10px 10px 0;padding:11px 13px;font-size:12px;color:var(--bamboo-d);line-height:1.6;margin-bottom:14px;}
+.alert-warn{background:var(--red-p);border-left:4px solid var(--red);border-radius:0 10px 10px 0;padding:11px 13px;font-size:12px;color:#7a1f1f;line-height:1.6;margin-bottom:14px;}
+.s-title{font-family:'Noto Serif TC',serif;font-size:15px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.s-title::after{content:'';flex:1;height:1px;background:var(--stone-d);}
+
+/* ── CONN STATUS BAR ── */
+.conn-bar{background:var(--bamboo-d);color:#fff;font-size:11px;text-align:center;padding:4px;letter-spacing:.5px;display:none;}
+.conn-bar.err{background:var(--red);display:block;}
+.conn-bar.ok{background:var(--bamboo-d);display:block;}
+</style>
+</head>
+<body>
+
+<div class="conn-bar" id="conn-bar"></div>
+
+<!-- HEADER -->
+<header class="app-header">
+  <div class="logo">竹</div>
+  <div class="header-t">
+    <h1>工程部 待辦任務</h1>
+    <p>CLOUD SYNC · SUPABASE</p>
+  </div>
+  <div class="sync-dot loading" id="sync-dot" title="連線狀態"></div>
+</header>
+
+<!-- SCROLL AREA -->
+<div class="scroll-area" id="scroll-area">
+
+  <!-- ═══ VIEW: TODO ═══ -->
+  <div class="view active" id="view-todo">
+    <div class="store-label">選擇分店</div>
+    <select class="store-select" id="store-select" onchange="onStoreChange()">
+      <option value="">── 請選擇分店 ──</option>
+    </select>
+    <div id="main-custom-store-wrap" style="display:none;margin-top:-8px;margin-bottom:14px;">
+      <input class="store-select" id="main-store-custom" type="text" placeholder="輸入分店名稱，例：台南成功店" style="font-size:13px;font-weight:500;" onchange="onCustomStoreEnter(this.value)">
+    </div>
+
+    <div id="todo-stats" style="display:none;">
+      <div class="prog-wrap">
+        <div class="prog-info"><span id="prog-label">完成進度</span><span id="prog-pct">0%</span></div>
+        <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-card"><div class="stat-n" id="stat-total">0</div><div class="stat-l">總任務</div></div>
+        <div class="stat-card"><div class="stat-n" id="stat-done">0</div><div class="stat-l">已完成</div></div>
+        <div class="stat-card"><div class="stat-n" id="stat-pending" style="color:var(--red)">0</div><div class="stat-l">待處理</div></div>
+      </div>
+    </div>
+
+    <div class="cat-pills" id="cat-pills" style="display:none;">
+      <div class="cat-pill active" onclick="filterCat('all',this)">全部</div>
+      <div class="cat-pill" onclick="filterCat('開店建製',this)">開店建製</div>
+      <div class="cat-pill" onclick="filterCat('廚區',this)">廚區</div>
+      <div class="cat-pill" onclick="filterCat('客席',this)">客席</div>
+      <div class="cat-pill" onclick="filterCat('水電',this)">水電</div>
+      <div class="cat-pill" onclick="filterCat('廣告文宣品',this)">廣告文宣品</div>
+      <div class="cat-pill" onclick="filterCat('冷氣',this)">冷氣</div>
+      <div class="cat-pill" onclick="filterCat('行政',this)">行政</div>
+      <div class="cat-pill" onclick="filterCat('現場營運支援',this)">現場營運支援</div>
+      <div class="cat-pill" onclick="filterCat('休假',this)">休假</div>
+      <div class="cat-pill" onclick="filterCat('行政日',this)">行政日</div>
+      <div class="cat-pill" onclick="filterCat('其他',this)">其他</div>
+    </div>
+
+    <div id="todo-list"></div>
+    <div id="todo-empty" class="empty">
+      <div class="empty-icon">🏗️</div>
+      <div class="empty-text">請選擇分店<br>查看或新增工程任務</div>
+    </div>
+
+    <!-- Quick actions -->
+    <div id="quick-actions" style="display:flex;gap:8px;padding-top:4px;display:none;">
+      <button onclick="seedDefaultTasks()" style="flex:1;background:var(--gold-p);color:#8a6010;border:1.5px solid var(--gold);border-radius:10px;padding:11px 8px;font-size:12px;font-weight:700;font-family:'Noto Sans TC',sans-serif;cursor:pointer;">🗂 建立預設任務</button>
+    </div>
+  </div>
+
+  <!-- ═══ VIEW: SUMMARY ═══ -->
+  <div class="view" id="view-summary">
+    <div class="s-title">各分店任務總覽</div>
+    <div class="alert-info">點擊分店名稱展開查看所有任務明細，完成項目顯示打線。</div>
+    <div id="summary-list"></div>
+  </div>
+
+  <!-- ═══ VIEW: CALENDAR ═══ -->
+  <div class="view" id="view-calendar">
+    <div class="cal-header">
+      <button class="cal-nav" onclick="calPrev()">&#8249;</button>
+      <div class="cal-month" id="cal-month-label"></div>
+      <button class="cal-nav" onclick="calNext()">&#8250;</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="cal-day-panel" id="cal-day-panel">
+      <div class="cal-day-title" id="cal-day-title"></div>
+      <div id="cal-day-tasks"></div>
+    </div>
+    <div class="alert-info" style="font-size:11px;">顯示所有分店有預計完成日期的待辦任務。點日期格查看當日任務。</div>
+  </div>
+
+  <!-- ═══ VIEW: VENDOR ═══ -->
+  <div class="view" id="view-vendor">
+    <div class="s-title">合作廠商</div>
+    <div id="vendor-list"></div>
+  </div>
+
+  <!-- ═══ VIEW: JOURNAL ═══ -->
+  <div class="view" id="view-journal">
+    <div class="s-title">工作日誌</div>
+    <div class="alert-info">依任務預計完成日期顯示當日任務清單，✅ 已完成 ⏳ 待完成，可填寫當日工作備註。</div>
+    <div id="journal-list">
+      <div class="empty"><div class="empty-icon">📔</div><div class="empty-text">載入中...</div></div>
+    </div>
+  </div>
+
+  <!-- ═══ VIEW: SUPPORT ═══ -->
+  <div class="view" id="view-support">
+    <div class="s-title">分店支援單</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+      <button class="cal-nav" onclick="supportMonthPrev()" style="padding:6px 12px;">&#8249;</button>
+      <div id="support-month-label" style="flex:1;text-align:center;font-family:'Noto Serif TC',serif;font-size:15px;font-weight:700;"></div>
+      <button class="cal-nav" onclick="supportMonthNext()" style="padding:6px 12px;">&#8250;</button>
+    </div>
+    <div id="support-stats" style="display:none;margin-bottom:14px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
+        <div class="stat-card"><div class="stat-n" id="ss-count" style="font-size:20px;">0</div><div class="stat-l">支援次數</div></div>
+        <div class="stat-card"><div class="stat-n" id="ss-hours" style="font-size:20px;">0</div><div class="stat-l">總時數(h)</div></div>
+        <div class="stat-card"><div class="stat-n" id="ss-expense" style="font-size:18px;color:var(--gold)">0</div><div class="stat-l">費用合計</div></div>
+      </div>
+      <button onclick="downloadSupportReport()" style="width:100%;background:var(--gold);color:white;border:none;padding:13px;border-radius:11px;font-size:14px;font-weight:700;font-family:'Noto Sans TC',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+        📥 下載本月支援單（Excel）
+      </button>
+    </div>
+    <div id="support-list"></div>
+    <div style="height:80px;"></div>
+  </div>
+
+  <!-- ═══ VIEW: TRIP ═══ -->
+  <div class="view" id="view-trip">
+    <div class="s-title">出差單</div>
+
+    <!-- Month selector + summary bar -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+      <button class="cal-nav" onclick="tripMonthPrev()" style="padding:6px 12px;">&#8249;</button>
+      <div id="trip-month-label" style="flex:1;text-align:center;font-family:'Noto Serif TC',serif;font-size:15px;font-weight:700;"></div>
+      <button class="cal-nav" onclick="tripMonthNext()" style="padding:6px 12px;">&#8250;</button>
+    </div>
+
+    <!-- Monthly stats -->
+    <div id="trip-stats" style="display:none;margin-bottom:14px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
+        <div class="stat-card"><div class="stat-n" id="ts-count" style="font-size:20px;">0</div><div class="stat-l">出差次數</div></div>
+        <div class="stat-card"><div class="stat-n" id="ts-hours" style="font-size:20px;">0</div><div class="stat-l">總時數(h)</div></div>
+        <div class="stat-card"><div class="stat-n" id="ts-mins" style="font-size:20px;">0</div><div class="stat-l">含分鐘</div></div>
+      </div>
+      <button onclick="downloadTripReport()" style="width:100%;background:var(--bamboo);color:white;border:none;padding:13px;border-radius:11px;font-size:14px;font-weight:700;font-family:'Noto Sans TC',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+        📥 下載本月出差單（Excel）
+      </button>
+    </div>
+
+    <div id="trip-list"></div>
+    <div style="height:80px;"></div>
+  </div>
+
+</div>
+
+<!-- FAB -->
+<button class="fab" id="fab" onclick="openAddModal()">＋</button>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <div class="nav-item active" onclick="switchView('todo',this)"><span class="nav-icon">📋</span><span>待辦</span></div>
+  <div class="nav-item" onclick="switchView('calendar',this)"><span class="nav-icon">📅</span><span>行事曆</span></div>
+  <div class="nav-item" onclick="switchView('summary',this)"><span class="nav-icon">📊</span><span>總覽</span></div>
+  <div class="nav-item" onclick="switchView('journal',this)"><span class="nav-icon">📔</span><span>日誌</span></div>
+  <div class="nav-item" onclick="switchView('trip',this)"><span class="nav-icon">🚗</span><span>出差單</span></div>
+  <div class="nav-item" onclick="switchView('support',this)"><span class="nav-icon">🏪</span><span>支援單</span></div>
+</nav>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal" onclick="overlayClose(event)">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-title">新增工程任務</div>
+    <div class="form-group">
+      <label class="form-label">分店</label>
+      <select class="form-select" id="f-store" onchange="onFormStoreChange()"></select>
+    </div>
+    <div class="form-group" id="custom-store-wrap" style="display:none;">
+      <label class="form-label">自行輸入分店名稱</label>
+      <input class="form-input" id="f-store-custom" type="text" placeholder="例：台南成功店（MZTCG）">
+    </div>
+    <div class="form-group">
+      <label class="form-label">大項類別</label>
+      <select class="form-select" id="f-cat">
+        <option>開店建製</option><option>廚區</option><option>客席</option>
+        <option>水電</option><option>廣告文宣品</option><option>冷氣</option><option>行政</option><option>現場營運支援</option><option>休假</option><option>行政日</option><option>其他</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">任務名稱（大項）</label>
+      <input class="form-input" id="f-name" type="text" placeholder="例：外場招牌安裝">
+    </div>
+    <div class="form-group">
+      <label class="form-label">內容細項</label>
+      <textarea class="form-textarea" id="f-detail" placeholder="例：確認燈箱位置、尺寸確認、廠商出圖"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">負責單位／廠商</label>
+      <select class="form-select" id="f-vendor" onchange="onVendorChange()"></select>
+    </div>
+    <div class="form-group" id="vendor-other-wrap" style="display:none;">
+      <label class="form-label">自行填寫負責單位</label>
+      <input class="form-input" id="f-vendor-other" type="text" placeholder="例：順億冷氣、鑫達工程">
+    </div>
+    <div class="form-group">
+      <label class="form-label">預計完成日期</label>
+      <input class="form-input" id="f-date" type="date">
+    </div>
+    <div class="form-group">
+      <label class="form-label">附件（報價單／現場照片）</label>
+      <div class="upload-area" id="upload-area"
+        onclick="document.getElementById('f-files').click()"
+        ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFiles(event)">
+        <div class="upload-icon">📎</div>
+        <div class="upload-text">點擊或拖曳上傳<br>JPG・PNG・PDF，每檔最大 5MB</div>
+      </div>
+      <input type="file" id="f-files" multiple accept="image/*,.pdf" style="display:none;" onchange="handleFiles(this.files)">
+      <div class="file-list" id="file-list"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="closeModal()">取消</button>
+      <button class="btn-primary" id="save-btn" onclick="saveTask()">儲存任務</button>
+    </div>
+    <div id="delete-wrap" style="display:none;margin-top:4px;">
+      <button class="btn-danger" onclick="deleteTask()">🗑 刪除此任務</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// SUPABASE CONFIG
+// ═══════════════════════════════════════════════
+const SUPA_URL = 'https://nhvdyqafykmkhjhelpsv.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5odmR5cWFmeWtta2hqaGVscHN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NzgwNTAsImV4cCI6MjA5NTI1NDA1MH0.qIxZ3XA81qmDPucsoZwD5qAVYNyYfKBdzmSMJZ3ofWc';
+
+const SB = {
+  async req(method, path, body) {
+    const res = await fetch(SUPA_URL + '/rest/v1/' + path, {
+      method,
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': method === 'POST' ? 'return=representation' : 'return=representation'
+      },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || err.error || res.statusText);
+    }
+    const text = await res.text();
+    return text ? JSON.parse(text) : [];
+  },
+  getTasks: (storeId) => {
+    const q = storeId ? `tasks?store_id=eq.${storeId}&order=created_at.asc` : 'tasks?order=created_at.asc';
+    return SB.req('GET', q);
+  },
+  getAllTasks: () => SB.req('GET', 'tasks?order=store_id.asc,created_at.asc'),
+  addTask: (t) => SB.req('POST', 'tasks', t),
+  updateTask: (id, t) => SB.req('PATCH', `tasks?id=eq.${id}`, t),
+  deleteTask: (id) => SB.req('DELETE', `tasks?id=eq.${id}`),
+  // Trips
+  getTrips: () => SB.req('GET', 'trips?order=date.desc,created_at.desc'),
+  addTrip: (t) => SB.req('POST', 'trips', t),
+  updateTrip: (id, t) => SB.req('PATCH', `trips?id=eq.${id}`, t),
+  deleteTrip: (id) => SB.req('DELETE', `trips?id=eq.${id}`),
+  // Journal notes
+  getJournalNotes: () => SB.req('GET', 'journal_notes?order=date.desc'),
+  // Support Sheets
+  getSupports: () => SB.req('GET', 'support_sheets?order=date.desc,created_at.desc'),
+  addSupport: (s) => SB.req('POST', 'support_sheets', s),
+  updateSupport: (id, s) => SB.req('PATCH', `support_sheets?id=eq.${id}`, s),
+  deleteSupport: (id) => SB.req('DELETE', `support_sheets?id=eq.${id}`),
+  upsertJournalNote: async (d, note) => {
+    // Try update first, then insert if not exists
+    const updateRes = await fetch(SUPA_URL + '/rest/v1/journal_notes?date=eq.' + d, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({note, updated_at: new Date().toISOString()})
+    });
+    const updateData = await updateRes.json().catch(()=>[]);
+    // If no rows updated (empty array), insert new record
+    if (Array.isArray(updateData) && updateData.length === 0) {
+      return SB.req('POST', 'journal_notes', {date:d, note, updated_at: new Date().toISOString()});
+    }
+    return updateData;
+  },
+};
+
+// ═══════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════
+const STORES = [
+  {id:'MZTJS',name:'新竹金山店'},{id:'MZTLM',name:'台中黎明店'},
+  {id:'MZTLK',name:'林口長庚店'},{id:'MZTGF',name:'新竹光復店'},
+  {id:'MZTDY',name:'桃園大有店'},{id:'MZTLG',name:'彰化鹿港店'},
+  {id:'MZTZS',name:'員林中山店'},{id:'MZTJH',name:'中壢九和店'},
+  {id:'MZTLZL',name:'台北六張犁店'},{id:'MZTBA',name:'竹北博愛店'},
+  {id:'MZTHK',name:'新竹湖口店'},{id:'MZTHW',name:'雲林虎尾店'},
+  {id:'MZTXTG',name:'台北行天宮店'},{id:'MZTXT',name:'台中西屯店'},
+  {id:'MZTFD',name:'新莊輔大店'},{id:'MZTST',name:'嘉義秀泰店'},
+  {id:'MZTBSS',name:'板橋雙十店'},{id:'MZTSDS',name:'台北善導寺店'},
+  {id:'MZTZY',name:'中壢中原店'},{id:'MZTXY',name:'彰化曉陽店'},
+  {id:'MZTWX',name:'台中文心店'},{id:'MZTZQ',name:'北車站前店'},
+  {id:'MZTYW',name:'桃園藝文店'},{id:'MZTRG',name:'內湖瑞光店'},
+  {id:'MZTYM',name:'大里益民店'},{id:'MZTDL',name:'雲林斗六店'},{id:'MZTWL',name:'桃園武陵店'},
+  {id:'MZTMC',name:'台中美村店'},{id:'MZTHQ',name:'新竹辦公室'},
+];
+
+const VENDORS = [
+  {name:'工程部',type:'內部',note:'墨竹亭工程部自辦',color:'#e8f3eb'},
+  {name:'京鴻布簾',type:'布簾',note:'布簾設計製作安裝',color:'#f0e8f8'},
+  {name:'順豐廣告',type:'廣告招牌',note:'招牌、燈箱、廣告設計',color:'#fdf4de'},
+  {name:'皇昇科技監視器',type:'監視器',note:'監視器設備安裝',color:'#e8f0fe'},
+  {name:'一八八自動門',type:'自動門',note:'自動門安裝維修',color:'#fdecea'},
+  {name:'裝全餐設',type:'餐廚設備',note:'廚房設備採購安裝',color:'#fff3cd'},
+  {name:'迦勝木作',type:'木作裝修',note:'木作工程施工',color:'#fdf0e6'},
+  {name:'杰斯水電',type:'水電',note:'水電配管工程',color:'#e8f3eb'},
+  {name:'築景設計',type:'室內設計',note:'室內空間設計',color:'#fce8f3'},
+  {name:'達鈦',type:'POS',note:'POS系統安裝設定',color:'#ececec'},
+  {name:'伯思濾水器',type:'濾水設備',note:'過濾器、飲水設備',color:'#e8f3fb'},
+  {name:'德易封口機',type:'封口設備',note:'封口機設備',color:'#f5ece8'},
+  {name:'__OTHER__',type:'其他',note:'自行填寫',color:'#f0f0f0'},
+];
+
+const DEFAULT_TASKS = [
+  {cat:'開店建製',name:'商圈評估場勘',detail:'人流分析、競品確認、電力容量確認（需100A以上）、天花板/地板/壁癌檢查',vendor:'工程部'},
+  {cat:'開店建製',name:'施工圖出圖確認',detail:'委託築景設計出室內空間施工圖、圖面審查確認',vendor:'築景設計'},
+  {cat:'開店建製',name:'廠商報價彙整',detail:'各工種廠商報價單收集、整理比較',vendor:'工程部'},
+  {cat:'開店建製',name:'工程行程表建立',detail:'依施工順序建立甘特表、各工種時程確認',vendor:'工程部'},
+  {cat:'廣告文宣品',name:'招牌燈箱安裝',detail:'直招/橫招位置確認、燈箱製作、騎樓燈、燃麵燈片、菜單燈片',vendor:'順豐廣告'},
+  {cat:'廣告文宣品',name:'大門自動門安裝',detail:'自動門設備安裝、玻璃門設計、風鳴器安裝測試',vendor:'一八八自動門'},
+  {cat:'廣告文宣品',name:'外場布簾安裝',detail:'菜口布簾、外場風格布簾設計製作',vendor:'京鴻布簾'},
+  {cat:'廣告文宣品',name:'騎樓照明水電',detail:'騎樓燈具安裝、外場投射燈、廣告燈箱線路',vendor:'杰斯水電'},
+  {cat:'廚區',name:'水電配管工程',detail:'廚排水電配管（明管為主）、插座/網路線路、220V專迴（抽風馬達、開水機）',vendor:'杰斯水電'},
+  {cat:'廚區',name:'排風抽風系統',detail:'2米3排風罩、2HP中壓抽風馬達（220V專迴/6A）、靜電機安裝',vendor:'裝全餐設'},
+  {cat:'廚區',name:'瓦斯管線配置',detail:'桶裝或天然氣確認、瓦斯配管、截油槽安裝',vendor:'杰斯水電'},
+  {cat:'廚區',name:'木作裝修工程',detail:'天花板、壁板、木作櫃台、隔間施工',vendor:'迦勝木作'},
+  {cat:'廚區',name:'金屬不鏽鋼工程',detail:'不鏽鋼壁板、廚區金屬配件',vendor:'達鈦'},
+  {cat:'廚區',name:'廚區餐設安裝',detail:'六口西餐爐、煮麵機、工作台冰箱、保溫魯桶、油炸機等設備安裝測試',vendor:'裝全餐設'},
+  {cat:'廚區',name:'監視器安裝',detail:'監視器採購、安裝、錄影系統設定',vendor:'皇昇科技監視器'},
+  {cat:'廚區',name:'冷氣安裝',detail:'冷氣設備安裝、管路規劃、試運轉',vendor:'工程部'},
+  {cat:'廚區',name:'濾水器安裝',detail:'過濾器組安裝、飲水設備設定',vendor:'伯思濾水器'},
+  {cat:'廚區',name:'封口機設備',detail:'封口機採購安裝、操作說明',vendor:'德易封口機'},
+  {cat:'客席',name:'客席區全面驗收',detail:'網路/冷氣/音響/監視器/招牌/燈具/自動門/插座全項目確認',vendor:'工程部'},
+  {cat:'客席',name:'廚區設備驗收',detail:'瓦斯管線、抽風機、油炸機、麵檯、各設備運作測試',vendor:'工程部'},
+  {cat:'客席',name:'POS設備安裝',detail:'POS系統安裝、網路設定、試刷測試',vendor:'工程部'},
+  {cat:'客席',name:'總部到店驗收',detail:'總部督導到店確認、夥伴到店接手、試清潔交屋',vendor:'工程部'},
+];
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+let tasks = [];         // currently loaded tasks for selected store
+let allTasks = [];      // all tasks for summary
+let editingId = null;
+let currentStore = '';
+let currentCat = 'all';
+let isOnline = false;
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+async function init() {
+  populateStoreSelect();
+  populateFormStores();
+  populateVendorSelect();
+  renderVendors();
+  setSyncStatus('loading');
+  try {
+    // Connection test
+    allTasks = await SB.getAllTasks();
+    isOnline = true;
+    setSyncStatus('ok');
+    showConn('✅ 雲端連線成功，資料即時同步', 'ok');
+    setTimeout(() => document.getElementById('conn-bar').style.display='none', 3000);
+    renderSummary();
+    calYear = new Date().getFullYear();
+    calMonth = new Date().getMonth();
+    // Load cloud data for trips and journal
+    await loadTrips();
+    await loadSupports();
+    await loadJournalNotes();
+  } catch(e) {
+    isOnline = false;
+    setSyncStatus('err');
+    showConn('❌ 雲端連線失敗，請確認 Supabase 設定', 'err');
+    console.error('Supabase error:', e);
+  }
+}
+
+function setSyncStatus(s) {
+  const dot = document.getElementById('sync-dot');
+  dot.className = 'sync-dot ' + s;
+}
+function showConn(msg, type) {
+  const bar = document.getElementById('conn-bar');
+  bar.textContent = msg;
+  bar.className = 'conn-bar ' + type;
+}
+function showToast(msg, duration=2000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ═══════════════════════════════════════════════
+// POPULATE SELECTS
+// ═══════════════════════════════════════════════
+function populateStoreSelect() {
+  const sel = document.getElementById('store-select');
+  STORES.forEach(s => {
+    if (s.id === 'OTHER') return;
+    const o = document.createElement('option');
+    o.value = s.id; o.textContent = s.name + ' (' + s.id + ')';
+    sel.appendChild(o);
+  });
+  const oOther = document.createElement('option');
+  oOther.value = 'OTHER'; oOther.textContent = '＋ 其他（自行輸入）';
+  sel.appendChild(oOther);
+}
+function populateFormStores() {
+  const sel = document.getElementById('f-store');
+  sel.innerHTML = '';
+  STORES.forEach(s => {
+    if (s.id === 'OTHER') return;
+    const o = document.createElement('option');
+    o.value = s.id; o.textContent = s.name;
+    sel.appendChild(o);
+  });
+  const oOther = document.createElement('option');
+  oOther.value = 'OTHER'; oOther.textContent = '＋ 其他（自行輸入）';
+  sel.appendChild(oOther);
+}
+function populateVendorSelect() {
+  const sel = document.getElementById('f-vendor');
+  sel.innerHTML = '';
+  VENDORS.forEach(v => {
+    if (v.name === '__OTHER__') return;
+    const o = document.createElement('option');
+    o.value = v.name; o.textContent = v.name + (v.type !== '內部' ? '（'+v.type+'）' : '');
+    sel.appendChild(o);
+  });
+  const oOther = document.createElement('option');
+  oOther.value = '__OTHER__'; oOther.textContent = '✏️ 其他（自行填寫）';
+  sel.appendChild(oOther);
+}
+function onVendorChange() {
+  const val = document.getElementById('f-vendor').value;
+  document.getElementById('vendor-other-wrap').style.display = (val === '__OTHER__') ? 'block' : 'none';
+}
+
+// Custom store handling
+function onFormStoreChange() {
+  const val = document.getElementById('f-store').value;
+  document.getElementById('custom-store-wrap').style.display = val === 'OTHER' ? 'block' : 'none';
+}
+
+function onCustomStoreEnter(name) {
+  if (!name.trim()) return;
+  currentStore = 'CUSTOM_' + name.trim().replace(/\s/g,'_');
+  currentCustomStoreName = name.trim();
+}
+
+let currentCustomStoreName = '';
+
+// ═══════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════
+function switchView(id, el) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  // FAB: show for todo and trip
+  const fab = document.getElementById('fab');
+  if (id === 'todo') { fab.style.display='flex'; fab.onclick=openAddModal; fab.textContent='＋'; }
+  else if (id === 'trip') { fab.style.display='flex'; fab.onclick=openAddTrip; fab.textContent='＋'; }
+  else if (id === 'support') { fab.style.display='flex'; fab.onclick=openAddSupport; fab.textContent='＋'; }
+  else { fab.style.display='none'; }
+  document.getElementById('scroll-area').scrollTop = 0;
+  if (id === 'summary') renderSummary();
+  if (id === 'vendor') renderVendors();
+  if (id === 'calendar') renderCalendar();
+  if (id === 'journal') { loadJournalNotes().then(() => renderJournal()); }
+  if (id === 'trip') { loadTrips().then(() => renderTrips()); }
+  if (id === 'support') { loadSupports().then(() => renderSupports()); }
+}
+
+// ═══════════════════════════════════════════════
+// STORE CHANGE
+// ═══════════════════════════════════════════════
+async function onStoreChange() {
+  const val = document.getElementById('store-select').value;
+  const customWrap = document.getElementById('main-custom-store-wrap');
+  if (val === 'OTHER') {
+    customWrap.style.display = 'block';
+    document.getElementById('main-store-custom').focus();
+    return;
+  } else {
+    customWrap.style.display = 'none';
+  }
+  currentStore = val;
+  currentCat = 'all';
+  resetCatPills();
+  if (!currentStore) {
+    document.getElementById('todo-stats').style.display = 'none';
+    document.getElementById('cat-pills').style.display = 'none';
+    document.getElementById('quick-actions').style.display = 'none';
+    document.getElementById('todo-empty').style.display = 'block';
+    document.getElementById('todo-list').innerHTML = '';
+    return;
+  }
+  document.getElementById('todo-empty').style.display = 'none';
+  document.getElementById('todo-list').innerHTML = '<div class="empty"><div class="empty-icon" style="font-size:28px">⏳</div><div class="empty-text">載入中...</div></div>';
+  try {
+    tasks = await SB.getTasks(currentStore);
+    document.getElementById('todo-stats').style.display = 'block';
+    document.getElementById('cat-pills').style.display = 'flex';
+    document.getElementById('quick-actions').style.display = 'flex';
+    renderTodos();
+  } catch(e) {
+    showToast('❌ 載入失敗：' + e.message);
+    document.getElementById('todo-list').innerHTML = '<div class="empty"><div class="empty-icon">❌</div><div class="empty-text">載入失敗<br>'+esc(e.message)+'</div></div>';
+  }
+}
+
+function resetCatPills() {
+  currentCat = 'all';
+  document.querySelectorAll('.cat-pill').forEach((p,i) => {
+    p.classList.toggle('active', i===0);
+  });
+}
+
+// ═══════════════════════════════════════════════
+// FILTER
+// ═══════════════════════════════════════════════
+function filterCat(cat, el) {
+  currentCat = cat;
+  document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  renderTodos();
+}
+
+// ═══════════════════════════════════════════════
+// RENDER TODOS
+// ═══════════════════════════════════════════════
+function renderTodos() {
+  const list = document.getElementById('todo-list');
+  const storeTasks = tasks;
+  const total = storeTasks.length;
+  const done = storeTasks.filter(t=>t.done).length;
+  const pct = total ? Math.round(done/total*100) : 0;
+
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-done').textContent = done;
+  document.getElementById('stat-pending').textContent = total - done;
+  document.getElementById('prog-pct').textContent = pct + '%';
+  document.getElementById('prog-fill').style.width = pct + '%';
+  const store = STORES.find(s=>s.id===currentStore);
+  document.getElementById('prog-label').textContent = store ? store.name : '';
+
+  let filtered = currentCat === 'all' ? storeTasks : storeTasks.filter(t=>t.cat===currentCat);
+
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">尚無${currentCat!=='all'?'「'+currentCat+'」類別的':''}任務<br>點右下角 ＋ 新增</div></div>`;
+    return;
+  }
+
+  const CATS = ['開店建製','廚區','客席','水電','廣告文宣品','冷氣','行政','現場營運支援','休假','行政日','其他'];
+  const EMOJI = {'開店建製':'🏗️','廚區':'🍳','客席':'🪑','水電':'🔧','廣告文宣品':'📢','冷氣':'❄️','行政':'🗂️','現場營運支援':'🛠️','休假':'🏖️','行政日':'📋','其他':'📌'};
+  let html = '';
+
+  CATS.forEach(cat => {
+    const ct = filtered.filter(t=>t.cat===cat);
+    if (!ct.length) return;
+    const cd = ct.filter(t=>t.done).length;
+    html += `<div class="todo-section">
+      <div class="todo-section-head">
+        <span>${EMOJI[cat]||'📌'} ${cat}</span>
+        <span class="section-badge">${cd}/${ct.length}</span>
+      </div>
+      <div class="todo-items">`;
+    ct.forEach(t => {
+      const dc = t.date ? getDateClass(t.date) : '';
+      const dl = t.date ? fmtDate(t.date) : '';
+      html += `<div class="todo-item${t.done?' done':''}" onclick="toggleTask('${t.id}')">
+        <div class="todo-cb"></div>
+        <div class="todo-main">
+          <div class="todo-name">${esc(t.name)}</div>
+          ${t.detail?`<div class="todo-detail">${esc(t.detail)}</div>`:''}
+          <div class="todo-meta">
+            ${t.vendor?`<span class="meta-tag meta-vendor">🏢 ${esc(t.vendor)}</span>`:''}
+            ${dl?`<span class="meta-tag meta-date ${dc}">📅 ${dl}</span>`:''}
+          </div>
+        </div>
+        <button class="btn-edit" onclick="openEdit('${t.id}',event)">✏️</button>
+      </div>
+      ${t.attachments && t.attachments.length ? '<div class="attach-row">' + t.attachments.map(a => {
+        if (a.type && a.type.startsWith('image/')) return '<img src="'+a.dataUrl+'" class="attach-thumb" onclick="openLightbox(\'' + a.dataUrl + '\')">';
+        return '<a href="'+a.dataUrl+'" download="'+esc(a.name)+'" class="attach-pdf">📄 '+esc(a.name)+'</a>';
+      }).join('') + '</div>' : ''}`;
+    });
+    html += `</div></div>`;
+  });
+
+  list.innerHTML = html;
+}
+
+function fmtDate(d) {
+  const dt = new Date(d+'T00:00:00');
+  return `${dt.getMonth()+1}/${dt.getDate()}`;
+}
+function getDateClass(d) {
+  const now = new Date(); now.setHours(0,0,0,0);
+  const dt = new Date(d+'T00:00:00');
+  const diff = (dt-now)/86400000;
+  if (diff < 0) return 'overdue';
+  if (diff <= 3) return 'soon';
+  return '';
+}
+
+// ═══════════════════════════════════════════════
+// TOGGLE TASK (雲端同步)
+// ═══════════════════════════════════════════════
+async function toggleTask(id) {
+  const t = tasks.find(t=>t.id===id);
+  if (!t) return;
+  const newDone = !t.done;
+  t.done = newDone;
+  t.done_at = newDone ? new Date().toISOString() : null;
+  renderTodos();
+  try {
+    setSyncStatus('loading');
+    await SB.updateTask(id, {done: newDone, done_at: t.done_at});
+    setSyncStatus('ok');
+    showToast(newDone ? '✅ 已完成' : '↩️ 取消完成');
+    allTasks = await SB.getAllTasks();
+  } catch(e) {
+    t.done = !newDone;
+    renderTodos();
+    setSyncStatus('err');
+    showToast('❌ 同步失敗，請重試');
+  }
+}
+
+// ═══════════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════════
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modal-title').textContent = '新增工程任務';
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-detail').value = '';
+  document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('f-cat').value = '開店建製';
+  document.getElementById('f-vendor').value = '工程部';
+  document.getElementById('delete-wrap').style.display = 'none';
+  if (currentStore) document.getElementById('f-store').value = currentStore;
+  resetFiles();
+  document.getElementById('modal').classList.add('open');
+}
+function openEdit(id, e) {
+  e.stopPropagation();
+  editingId = id;
+  const t = tasks.find(t=>t.id===id);
+  if (!t) return;
+  document.getElementById('modal-title').textContent = '編輯任務';
+  document.getElementById('f-store').value = t.store_id;
+  document.getElementById('f-cat').value = t.cat;
+  document.getElementById('f-name').value = t.name;
+  document.getElementById('f-detail').value = t.detail || '';
+  const knownVendor = VENDORS.find(v => v.name === t.vendor && v.name !== '__OTHER__');
+  if (t.vendor && !knownVendor) {
+    document.getElementById('f-vendor').value = '__OTHER__';
+    document.getElementById('vendor-other-wrap').style.display = 'block';
+    document.getElementById('f-vendor-other').value = t.vendor;
+  } else {
+    document.getElementById('f-vendor').value = t.vendor || '工程部';
+    document.getElementById('vendor-other-wrap').style.display = 'none';
+  }
+  document.getElementById('f-date').value = t.date || '';
+  document.getElementById('delete-wrap').style.display = 'block';
+  resetFiles();
+  if (t.attachments && t.attachments.length) {
+    pendingFiles = JSON.parse(JSON.stringify(t.attachments));
+    renderFileList();
+  }
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+function overlayClose(e) { if (e.target===document.getElementById('modal')) closeModal(); }
+
+// ═══════════════════════════════════════════════
+// SAVE TASK (雲端)
+// ═══════════════════════════════════════════════
+async function saveTask() {
+  let storeId = document.getElementById('f-store').value;
+  if (storeId === 'OTHER') {
+    const customName = document.getElementById('f-store-custom').value.trim();
+    if (!customName) { showToast('⚠️ 請填寫自訂分店名稱'); return; }
+    storeId = 'CUSTOM_' + customName.replace(/\s/g,'_');
+  }
+  const name = document.getElementById('f-name').value.trim();
+  if (!storeId || !name) { showToast('⚠️ 請填寫分店和任務名稱'); return; }
+
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>儲存中';
+
+  const data = {
+    store_id: storeId,
+    cat: document.getElementById('f-cat').value,
+    name,
+    detail: document.getElementById('f-detail').value.trim(),
+    vendor: document.getElementById('f-vendor').value === '__OTHER__'
+      ? (document.getElementById('f-vendor-other').value.trim() || '其他')
+      : document.getElementById('f-vendor').value,
+    date: document.getElementById('f-date').value || null,
+    attachments: pendingFiles.slice(),
+  };
+
+  try {
+    setSyncStatus('loading');
+    if (editingId) {
+      await SB.updateTask(editingId, data);
+      showToast('✅ 任務已更新');
+    } else {
+      await SB.addTask({...data, done: false});
+      showToast('✅ 任務已新增');
+    }
+    setSyncStatus('ok');
+    closeModal();
+    if (currentStore === storeId) {
+      tasks = await SB.getTasks(currentStore);
+      renderTodos();
+    }
+    allTasks = await SB.getAllTasks();
+  } catch(e) {
+    setSyncStatus('err');
+    showToast('❌ 儲存失敗：' + e.message, 3000);
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '儲存任務';
+  }
+}
+
+// ═══════════════════════════════════════════════
+// DELETE TASK (雲端)
+// ═══════════════════════════════════════════════
+async function deleteTask() {
+  if (!editingId || !confirm('確定刪除此任務？')) return;
+  try {
+    setSyncStatus('loading');
+    await SB.deleteTask(editingId);
+    setSyncStatus('ok');
+    showToast('🗑 已刪除');
+    closeModal();
+    tasks = tasks.filter(t=>t.id!==editingId);
+    renderTodos();
+    allTasks = await SB.getAllTasks();
+  } catch(e) {
+    setSyncStatus('err');
+    showToast('❌ 刪除失敗');
+  }
+}
+
+// ═══════════════════════════════════════════════
+// SUMMARY VIEW
+// ═══════════════════════════════════════════════
+function renderSummary() {
+  const list = document.getElementById('summary-list');
+  const CATS = ['開店建製','廚區','客席','水電','廣告文宣品','冷氣','行政','現場營運支援','休假','行政日','其他'];
+  const EMOJI = {'開店建製':'🏗️','廚區':'🍳','客席':'🪑','水電':'🔧','廣告文宣品':'📢','冷氣':'❄️','行政':'🗂️','現場營運支援':'🛠️','休假':'🏖️','行政日':'📋','其他':'📌'};
+
+  // group by store
+  const byStore = {};
+  allTasks.forEach(t => { if (!byStore[t.store_id]) byStore[t.store_id]=[];  byStore[t.store_id].push(t); });
+
+  if (!Object.keys(byStore).length) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">尚無任何任務資料</div></div>';
+    return;
+  }
+
+  let html = '';
+  // Include ALL store_ids in DB, even custom ones not in STORES list
+  const allStoreIds = Object.keys(byStore);
+  const storeList = [
+    ...STORES.filter(s => allStoreIds.includes(s.id)),
+    ...allStoreIds.filter(sid => !STORES.find(s=>s.id===sid)).map(sid => ({id:sid, name:sid.replace('CUSTOM_','').replace(/_/g,' ')}))
+  ];
+  storeList.forEach(s => {
+    const st = byStore[s.id];
+    if (!st) return;
+    const done = st.filter(t=>t.done).length;
+    const total = st.length;
+    const pct = Math.round(done/total*100);
+    const color = pct===100 ? 'var(--bamboo)' : pct>50 ? 'var(--gold)' : 'var(--red)';
+
+    html += `<div class="summary-store open" id="ss-${s.id}">
+      <div class="summary-store-head" onclick="toggleSS('${s.id}')">
+        <div class="ss-name">${s.name}</div>
+        <div class="ss-pct" style="color:${color}">${pct}%</div>
+        <div style="font-size:11px;color:var(--mist);margin-right:4px;">${done}/${total}</div>
+        <div class="ss-arrow">▼</div>
+      </div>
+      <div class="summary-body">
+        <div style="padding:6px 14px 2px;">
+          <div class="prog-bar" style="height:4px;"><div class="prog-fill" style="width:${pct}%;background:${color}"></div></div>
+        </div>`;
+
+    // Group by known cats first, then uncategorized
+    const knownCatTasks = new Set();
+    CATS.forEach(cat => {
+      const ct = st.filter(t=>t.cat===cat);
+      if (!ct.length) return;
+      html += `<div style="padding:8px 14px 2px;font-size:10px;font-weight:700;color:var(--bamboo);letter-spacing:1px;">${EMOJI[cat]||'📌'} ${cat}</div>`;
+      ct.forEach(t => {
+        knownCatTasks.add(t.id);
+        html += `<div class="summary-item">
+          <div class="si-dot ${t.done?'done':'pending'}"></div>
+          <div class="si-info">
+            <div class="si-name ${t.done?'done':''}">${esc(t.name)}</div>
+            <div class="si-sub">${t.detail?esc(t.detail.slice(0,40))+(t.detail.length>40?'…':''):''} ${t.vendor?'｜🏢'+esc(t.vendor):''}</div>
+          </div>
+          <div class="si-date">${t.date?fmtDate(t.date):''}</div>
+        </div>`;
+      });
+    });
+    // Show tasks with other/unknown categories
+    const otherTasks = st.filter(t => !knownCatTasks.has(t.id));
+    if (otherTasks.length) {
+      html += `<div style="padding:8px 14px 2px;font-size:10px;font-weight:700;color:var(--bamboo);letter-spacing:1px;">📌 其他</div>`;
+      otherTasks.forEach(t => {
+        html += `<div class="summary-item">
+          <div class="si-dot ${t.done?'done':'pending'}"></div>
+          <div class="si-info">
+            <div class="si-name ${t.done?'done':''}">${esc(t.name)}</div>
+            <div class="si-sub">${t.cat ? esc(t.cat)+' ' : ''}${t.detail?esc(t.detail.slice(0,40))+(t.detail.length>40?'…':''):''} ${t.vendor?'｜🏢'+esc(t.vendor):''}</div>
+          </div>
+          <div class="si-date">${t.date?fmtDate(t.date):''}</div>
+        </div>`;
+      });
+    }
+
+    html += `</div></div>`;
+  });
+
+  list.innerHTML = html || '<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">尚無資料</div></div>';
+}
+
+function toggleSS(id) { document.getElementById('ss-'+id).classList.toggle('open'); }
+
+// ═══════════════════════════════════════════════
+// VENDOR VIEW
+// ═══════════════════════════════════════════════
+function renderVendors() {
+  const list = document.getElementById('vendor-list');
+  let html = '';
+  VENDORS.forEach((v,vi) => {
+    const vTasks = allTasks.filter(t=>t.vendor===v.name);
+    const total = vTasks.length;
+    const done = vTasks.filter(t=>t.done).length;
+    const pct = total ? Math.round(done/total*100) : 0;
+    let taskRows = '';
+    if (total) {
+      taskRows = vTasks.map(t => {
+        const storeName = STORES.find(s=>s.id===t.store_id)?.name || t.store_id;
+        return `<div style="display:flex;align-items:flex-start;gap:9px;padding:9px 14px;border-bottom:1px solid var(--stone-d);font-size:12px;" onclick="goToStore('${t.store_id}')">
+          <div style="width:8px;height:8px;border-radius:50%;background:${t.done?'var(--bamboo)':'var(--stone-d)'};flex-shrink:0;margin-top:3px;"></div>
+          <div style="flex:1;">
+            <div style="${t.done?'text-decoration:line-through;color:var(--mist);':''}">${esc(t.name)}</div>
+            <div style="font-size:10px;color:var(--mist);margin-top:1px;">📍 ${esc(storeName)} · ${t.cat}</div>
+          </div>
+          <div style="font-size:10px;color:var(--mist);flex-shrink:0;">${t.date?fmtDate(t.date):''}</div>
+        </div>`;
+      }).join('');
+    }
+    html += `<div class="vendor-card" style="padding:0;overflow:hidden;">
+      <div style="padding:14px;cursor:pointer;display:flex;align-items:center;gap:8px;" onclick="toggleVendor(${vi})">
+        <span class="vendor-type" style="background:${v.color};color:var(--ink);font-size:10px;padding:3px 9px;border-radius:20px;font-weight:700;">${v.type}</span>
+        <span style="font-weight:700;font-size:15px;flex:1;">${v.name}</span>
+        ${total?`<span style="font-size:11px;color:var(--bamboo);font-weight:700;">${done}/${total}</span>`:''}
+        <span style="font-size:11px;color:var(--mist);transition:transform .2s;" id="varrow-${vi}">${total?'▼':''}</span>
+      </div>
+      <div style="font-size:12px;color:var(--mist);padding:0 14px 12px;">${v.note}</div>
+      ${total?`<div id="vtasks-${vi}" style="display:none;border-top:1px solid var(--stone-d);">
+        <div style="padding:7px 14px;font-size:10px;font-weight:700;color:var(--bamboo);letter-spacing:1px;">待辦任務清單</div>
+        <div style="height:4px;background:var(--stone-d);margin:0 14px 0;border-radius:2px;"><div style="height:100%;background:var(--bamboo);border-radius:2px;width:${pct}%"></div></div>
+        ${taskRows}
+      </div>`:''}
+    </div>`;
+  });
+  list.innerHTML = html || '<div class="empty"><div class="empty-icon">🏢</div><div class="empty-text">廠商清單載入中</div></div>';
+}
+
+function toggleVendor(vi) {
+  const box = document.getElementById('vtasks-'+vi);
+  const arrow = document.getElementById('varrow-'+vi);
+  if (!box) return;
+  const open = box.style.display === 'block';
+  box.style.display = open ? 'none' : 'block';
+  if (arrow) arrow.style.transform = open ? '' : 'rotate(180deg)';
+}
+
+function goToStore(storeId) {
+  currentStore = storeId;
+  document.getElementById('store-select').value = storeId;
+  onStoreChange();
+  // switch to todo view
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-todo').classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.nav-item')[0].classList.add('active');
+  document.getElementById('fab').style.display = 'flex';
+  document.getElementById('scroll-area').scrollTop = 0;
+}
+
+// ═══════════════════════════════════════════════
+// SEED DEFAULT TASKS
+// ═══════════════════════════════════════════════
+async function seedDefaultTasks() {
+  if (!currentStore) { showToast('請先選擇分店'); return; }
+  const store = STORES.find(s=>s.id===currentStore);
+  if (!confirm(`為「${store.name}」建立 ${DEFAULT_TASKS.length} 個預設任務範本？`)) return;
+
+  const btn = document.querySelector('#quick-actions button');
+  btn.textContent = '⏳ 建立中...';
+  btn.disabled = true;
+
+  const today = new Date();
+  let added = 0;
+  try {
+    setSyncStatus('loading');
+    for (let i=0; i<DEFAULT_TASKS.length; i++) {
+      const tmpl = DEFAULT_TASKS[i];
+      // Check if already exists
+      const exists = tasks.find(t=>t.name===tmpl.name);
+      if (exists) continue;
+      const d = new Date(today);
+      d.setDate(d.getDate() + i*3);
+      await SB.addTask({
+        store_id: currentStore,
+        cat: tmpl.cat,
+        name: tmpl.name,
+        detail: tmpl.detail,
+        vendor: tmpl.vendor,
+        date: d.toISOString().split('T')[0],
+        done: false,
+      });
+      added++;
+    }
+    tasks = await SB.getTasks(currentStore);
+    allTasks = await SB.getAllTasks();
+    renderTodos();
+    setSyncStatus('ok');
+    showToast(`✅ 已建立 ${added} 個任務`, 2500);
+  } catch(e) {
+    setSyncStatus('err');
+    showToast('❌ 建立失敗：'+e.message, 3000);
+  } finally {
+    btn.textContent = '🗂 建立預設任務';
+    btn.disabled = false;
+  }
+}
+
+// ═══════════════════════════════════════════════
+// START
+// ═══════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════
+// CALENDAR
+// ═══════════════════════════════════════════════
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth(); // 0-indexed
+let calSelectedDate = null;
+
+const CAT_COLORS = {
+  '開店建製':'#4a7c59','廚區':'#e67e22','客席':'#8e44ad','行政':'#5d4e8c','現場營運支援':'#1a7a8a','休假':'#c0392b','行政日':'#1a56cc',
+  '水電':'#2980b9','廣告文宣品':'#c0392b','冷氣':'#16a085',
+  '施工前':'#4a7c59','外場':'#e67e22','內場廚區':'#e67e22',
+  '設備':'#2980b9','驗收':'#27ae60','其他':'#7f8c8d'
+};
+
+function calPrev() {
+  calMonth--;
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  renderCalendar();
+}
+function calNext() {
+  calMonth++;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  document.getElementById('cal-month-label').textContent = calYear + '年 ' + monthNames[calMonth];
+
+  // Build task map by date string
+  const taskMap = {};
+  allTasks.forEach(t => {
+    if (!t.date) return;
+    if (!taskMap[t.date]) taskMap[t.date] = [];
+    taskMap[t.date].push(t);
+  });
+
+  const grid = document.getElementById('cal-grid');
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+
+  // Day of week headers
+  const dows = ['日','一','二','三','四','五','六'];
+  const dowClasses = ['sun','','','','','','sat'];
+  let html = dows.map((d,i)=>`<div class="cal-dow ${dowClasses[i]}">${d}</div>`).join('');
+
+  // First day of month
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const daysInPrevMonth = new Date(calYear, calMonth, 0).getDate();
+
+  // Prev month padding
+  for (let i = firstDay-1; i >= 0; i--) {
+    const d = daysInPrevMonth - i;
+    const prevMonth = calMonth === 0 ? 11 : calMonth-1;
+    const prevYear = calMonth === 0 ? calYear-1 : calYear;
+    const dateStr = `${prevYear}-${String(prevMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    html += calCell(d, dateStr, taskMap, todayStr, true);
+  }
+
+  // Current month
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    html += calCell(d, dateStr, taskMap, todayStr, false);
+  }
+
+  // Next month padding
+  const totalCells = firstDay + daysInMonth;
+  const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+  for (let d = 1; d <= remaining; d++) {
+    const nextMonth = calMonth === 11 ? 0 : calMonth+1;
+    const nextYear = calMonth === 11 ? calYear+1 : calYear;
+    const dateStr = `${nextYear}-${String(nextMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    html += calCell(d, dateStr, taskMap, todayStr, true);
+  }
+
+  grid.innerHTML = html;
+
+  // If a date was selected, re-render day panel
+  if (calSelectedDate) showDayPanel(calSelectedDate, taskMap);
+}
+
+function calCell(d, dateStr, taskMap, todayStr, otherMonth) {
+  const tasks = taskMap[dateStr] || [];
+  const isToday = dateStr === todayStr;
+  const hasTasks = tasks.length > 0;
+
+  // Check for holiday or admin day tasks
+  const hasHoliday = tasks.some(t => t.cat === '休假');
+  const hasAdmin = tasks.some(t => t.cat === '行政日');
+  // Check support sheets for this date
+  const hasSupport = supports.some(s => s.date === dateStr);
+
+  const dots = tasks.slice(0,5).map(t => {
+    const col = CAT_COLORS[t.cat] || '#888';
+    const opacity = t.done ? '0.4' : '1';
+    return `<div class="cal-dot" style="background:${col};opacity:${opacity}"></div>`;
+  }).join('');
+
+  const classes = ['cal-cell',
+    otherMonth ? 'other-month' : '',
+    isToday ? 'today' : '',
+    hasHoliday ? 'has-holiday' : (hasAdmin ? 'has-admin' : (hasSupport ? 'has-support' : (hasTasks ? 'has-task' : '')))
+  ].filter(Boolean).join(' ');
+
+  return `<div class="${classes}" onclick="calSelectDate('${dateStr}')">
+    <div class="cal-date">${d}</div>
+    ${hasTasks ? `<div class="cal-dots">${dots}</div>` : ''}
+    ${tasks.length > 0 ? `<div class="cal-task-count">${tasks.length}</div>` : ''}
+  </div>`;
+}
+
+function calSelectDate(dateStr) {
+  calSelectedDate = dateStr;
+  const taskMap = {};
+  allTasks.forEach(t => {
+    if (!t.date) return;
+    if (!taskMap[t.date]) taskMap[t.date] = [];
+    taskMap[t.date].push(t);
+  });
+  showDayPanel(dateStr, taskMap);
+}
+
+function showDayPanel(dateStr, taskMap) {
+  const panel = document.getElementById('cal-day-panel');
+  const title = document.getElementById('cal-day-title');
+  const list = document.getElementById('cal-day-tasks');
+  const dt = new Date(dateStr + 'T00:00:00');
+  const dayNames = ['日','一','二','三','四','五','六'];
+  title.textContent = `${dt.getMonth()+1}月${dt.getDate()}日（${dayNames[dt.getDay()]}）`;
+
+  const dayTasks = taskMap[dateStr] || [];
+  if (!dayTasks.length) {
+    list.innerHTML = '<div style="font-size:13px;color:var(--mist);padding:8px 0;">這天沒有待辦任務</div>';
+  } else {
+    const storeName = s => STORES.find(st=>st.id===s)?.name || s;
+    list.innerHTML = dayTasks.map(t => {
+      const col = CAT_COLORS[t.cat] || '#888';
+      return `<div class="cal-task-item">
+        <div class="cal-task-dot" style="background:${col};${t.done?'opacity:.4':''}"></div>
+        <div class="cal-task-info">
+          <div class="cal-task-name ${t.done?'done':''}">${esc(t.name)}</div>
+          <div class="cal-task-sub">📍 ${esc(storeName(t.store_id))} · ${t.cat}${t.vendor?' · 🏢'+esc(t.vendor):''}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  panel.classList.add('open');
+  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+
+// ── FILE STATE ──
+let pendingFiles = [];
+
+function handleFiles(fl) {
+  Array.from(fl).forEach(file => {
+    if (file.size > 5*1024*1024) { showToast('❌ 超過5MB：'+file.name,2500); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      pendingFiles.push({name:file.name, size:file.size, type:file.type, dataUrl:e.target.result});
+      renderFileList();
+    };
+    reader.readAsDataURL(file);
+  });
+  document.getElementById('f-files').value = '';
+}
+function renderFileList() {
+  const el = document.getElementById('file-list');
+  if (!el) return;
+  el.innerHTML = pendingFiles.map((f,i) => {
+    const isImg = f.type && f.type.startsWith('image/');
+    const sz = f.size > 1048576 ? (f.size/1048576).toFixed(1)+'MB' : Math.round(f.size/1024)+'KB';
+    return '<div class="file-item">'
+      + '<span class="file-icon">'+(isImg?'🖼️':'📄')+'</span>'
+      + '<span class="file-name">'+esc(f.name)+'</span>'
+      + '<span class="file-size">'+sz+'</span>'
+      + '<button class="file-del" onclick="removeFile('+i+')">✕</button>'
+      + '</div>'
+      + (isImg ? '<img src="'+f.dataUrl+'" class="file-preview-img">' : '');
+  }).join('');
+}
+function removeFile(i) { pendingFiles.splice(i,1); renderFileList(); }
+function dragOver(e) { e.preventDefault(); document.getElementById('upload-area').classList.add('drag'); }
+function dragLeave() { document.getElementById('upload-area').classList.remove('drag'); }
+function dropFiles(e) {
+  e.preventDefault();
+  document.getElementById('upload-area').classList.remove('drag');
+  handleFiles(e.dataTransfer.files);
+}
+function resetFiles() {
+  pendingFiles = [];
+  const el = document.getElementById('file-list');
+  if (el) el.innerHTML = '';
+  const vow = document.getElementById('vendor-other-wrap');
+  if (vow) vow.style.display = 'none';
+}
+function openLightbox(src) {
+  const lb = document.createElement('div');
+  lb.className = 'lightbox';
+  lb.innerHTML = '<img src="'+src+'"><div class="lightbox-close" onclick="this.parentElement.remove()">✕</div>';
+  lb.onclick = e => { if(e.target===lb) lb.remove(); };
+  document.body.appendChild(lb);
+}
+
+
+// ═══════════════════════════════════════════════
+// JOURNAL
+// ═══════════════════════════════════════════════
+let journalNotes = {}; // {dateStr: noteText}
+
+function renderJournal() {
+  const list = document.getElementById('journal-list');
+
+  // Group ALL tasks by their scheduled date (t.date)
+  // Also include completed tasks' done_at date if different from scheduled date
+  const byDate = {};
+
+  allTasks.forEach(t => {
+    // Add to scheduled date
+    if (t.date) {
+      if (!byDate[t.date]) byDate[t.date] = {scheduled:[], completed:[]};
+      byDate[t.date].scheduled.push(t);
+    }
+    // Also add to completion date if different from scheduled
+    if (t.done && t.done_at) {
+      const doneDate = t.done_at.split('T')[0];
+      if (doneDate !== t.date) {
+        if (!byDate[doneDate]) byDate[doneDate] = {scheduled:[], completed:[]};
+        byDate[doneDate].completed.push(t);
+      }
+    }
+  });
+
+  const dates = Object.keys(byDate).sort().reverse();
+  if (!dates.length) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">📔</div><div class="empty-text">尚無任務資料<br>新增待辦任務並設定預計完成日期後會出現在日誌</div></div>';
+    return;
+  }
+
+  const days = ['日','一','二','三','四','五','六'];
+
+  list.innerHTML = dates.map(d => {
+    const {scheduled, completed} = byDate[d];
+    const allDayTasks = scheduled; // all scheduled tasks for this day
+    const doneTasks = allDayTasks.filter(t => t.done);
+    const pendingTasks = allDayTasks.filter(t => !t.done);
+    const extraDone = completed; // tasks completed on this day but scheduled elsewhere
+
+    const dt = new Date(d + 'T00:00:00');
+    const label = `${dt.getMonth()+1}月${dt.getDate()}日（週${days[dt.getDay()]}）`;
+    const note = journalNotes[d] || '';
+
+    // Scheduled task rows
+    const scheduledRows = allDayTasks.map(t => {
+      const store = STORES.find(s=>s.id===t.store_id)?.name || t.store_id;
+      const isDone = t.done;
+      return `<div class="journal-done-item">
+        <div class="journal-check" style="${isDone?'':'background:var(--stone-d);'}">${isDone?'':''}</div>
+        <div class="journal-task-info">
+          <div class="journal-task-name" style="${isDone?'':'text-decoration:none;color:var(--ink);'}">${esc(t.name)}</div>
+          <div class="journal-task-sub">📍 ${esc(store)} · ${t.cat}${t.vendor?' · 🏢'+esc(t.vendor):''}${isDone?' · ✅已完成':' · ⏳待完成'}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    // Extra completed tasks (done on this day but scheduled on different date)
+    const extraRows = extraDone.map(t => {
+      const store = STORES.find(s=>s.id===t.store_id)?.name || t.store_id;
+      return `<div class="journal-done-item" style="opacity:.75;">
+        <div class="journal-check"></div>
+        <div class="journal-task-info">
+          <div class="journal-task-name">${esc(t.name)}</div>
+          <div class="journal-task-sub">📍 ${esc(store)} · ${t.cat} · ✅ 當日完成（原定 ${t.date||'未設日期'}）</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    const totalCount = allDayTasks.length + extraDone.length;
+    const doneCount = doneTasks.length + extraDone.length;
+    const countLabel = `${doneCount}/${totalCount} 完成`;
+
+    return `<div class="journal-card open" id="jc-${d}">
+      <div class="journal-card-head" onclick="toggleJournal('${d}')">
+        <div class="journal-date-label">📅 ${label}</div>
+        <div class="journal-count">${countLabel}</div>
+        <div class="journal-arrow">▼</div>
+      </div>
+      <div class="journal-body">
+        ${scheduledRows}
+        ${extraRows}
+        <div class="journal-note">
+          <div class="journal-note-label">📝 當日工作備註</div>
+          ${note
+            ? `<div class="journal-note-text" id="jnt-${d}">${esc(note)}</div>
+               <button class="journal-save-btn" style="background:var(--stone);color:var(--mist);margin-top:4px;" onclick="editNote('${d}')">✏️ 編輯備註</button>`
+            : `<textarea class="journal-note-input" id="jni-${d}" placeholder="記錄今日工作狀況、問題、備忘...">${note}</textarea>
+               <button class="journal-save-btn" onclick="saveNote('${d}')">儲存備註</button>`
+          }
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleJournal(d) {
+  document.getElementById('jc-'+d).classList.toggle('open');
+}
+
+async function saveNote(d) {
+  const ta = document.getElementById('jni-'+d);
+  if (!ta) return;
+  const note = ta.value.trim();
+  journalNotes[d] = note;
+  // Save to localStorage as backup
+  localStorage.setItem('mzt-journal-notes', JSON.stringify(journalNotes));
+  try {
+    setSyncStatus('loading');
+    await SB.upsertJournalNote(d, note);
+    setSyncStatus('ok');
+    showToast('✅ 備註已同步');
+  } catch(e) {
+    setSyncStatus('err');
+    showToast('⚠️ 備註已儲存（本機），同步失敗');
+  }
+  renderJournal();
+}
+
+function editNote(d) {
+  const note = journalNotes[d] || '';
+  const container = document.getElementById('jnt-'+d);
+  if (!container) return;
+  container.outerHTML = `<textarea class="journal-note-input" id="jni-${d}">${esc(note)}</textarea>
+    <button class="journal-save-btn" onclick="saveNote('${d}')">儲存備註</button>`;
+}
+
+async function loadJournalNotes() {
+  try {
+    const data = await SB.getJournalNotes();
+    journalNotes = {};
+    data.forEach(r => { journalNotes[r.date] = r.note || ''; });
+  } catch(e) {
+    console.warn('loadJournalNotes fallback:', e.message);
+    const saved = localStorage.getItem('mzt-journal-notes');
+    if (saved) journalNotes = JSON.parse(saved);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// TRIP REPORT
+// ═══════════════════════════════════════════════
+// ID generator
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2,5);
+}
+
+// Transport state
+const TRANSPORT_TYPES = ['car','hsr','tra','mrt'];
+
+function toggleTransport(type) {
+  const item = document.getElementById('t-'+type+'-item');
+  if (!item) return;
+  const isActive = item.classList.contains('active');
+  item.classList.toggle('active', !isActive);
+  // Clear inputs when deactivating
+  if (isActive) {
+    ['km','amount'].forEach(f => {
+      const el = document.getElementById('t-'+type+'-'+f);
+      if (el) el.value = '';
+    });
+  }
+  updateExpenseTotal();
+}
+
+const CAR_RATE = 4.5; // NT$ per km
+
+function calcCarAmount() {
+  const kmEl = document.getElementById('t-car-km');
+  const amtEl = document.getElementById('t-car-amount');
+  if (!kmEl || !amtEl) return;
+  const km = parseFloat(kmEl.value) || 0;
+  if (km > 0) {
+    amtEl.value = Math.round(km * CAR_RATE);
+  } else {
+    amtEl.value = '';
+  }
+  updateExpenseTotal();
+}
+
+function updateExpenseTotal() {
+  let total = 0;
+  total += parseInt(document.getElementById('t-car-amount')?.value || 0) || 0;
+  total += parseInt(document.getElementById('t-hsr-amount')?.value || 0) || 0;
+  total += parseInt(document.getElementById('t-tra-amount')?.value || 0) || 0;
+  total += parseInt(document.getElementById('t-mrt-amount')?.value || 0) || 0;
+  const el = document.getElementById('expense-total-display');
+  if (el) el.textContent = 'NT$ ' + total.toLocaleString();
+}
+
+function getExpenseData() {
+  const car = document.getElementById('t-car-item')?.classList.contains('active');
+  const hsr = document.getElementById('t-hsr-item')?.classList.contains('active');
+  const tra = document.getElementById('t-tra-item')?.classList.contains('active');
+  const mrt = document.getElementById('t-mrt-item')?.classList.contains('active');
+  return {
+    car: car ? {
+      km: parseInt(document.getElementById('t-car-km')?.value)||0,
+      amount: parseInt(document.getElementById('t-car-amount')?.value)||0
+    } : null,
+    hsr: hsr ? {amount: parseInt(document.getElementById('t-hsr-amount')?.value)||0} : null,
+    tra: tra ? {amount: parseInt(document.getElementById('t-tra-amount')?.value)||0} : null,
+    mrt: mrt ? {amount: parseInt(document.getElementById('t-mrt-amount')?.value)||0} : null,
+  };
+}
+
+function setExpenseData(expense) {
+  TRANSPORT_TYPES.forEach(type => {
+    const item = document.getElementById('t-'+type+'-item');
+    if (!item) return;
+    const data = expense?.[type];
+    if (data) {
+      item.classList.add('active');
+      if (type==='car') {
+        const km = document.getElementById('t-car-km');
+        if (km && data.km) { km.value = data.km; }
+        const amt = document.getElementById('t-car-amount');
+        if (amt && data.amount) amt.value = data.amount;
+      } else {
+        const amt = document.getElementById('t-'+type+'-amount');
+        if (amt && data.amount) amt.value = data.amount;
+      }
+    } else {
+      item.classList.remove('active');
+    }
+  });
+  updateExpenseTotal();
+}
+
+function resetExpenseForm() {
+  TRANSPORT_TYPES.forEach(type => {
+    const item = document.getElementById('t-'+type+'-item');
+    if (item) item.classList.remove('active');
+    ['km','amount'].forEach(f => {
+      const el = document.getElementById('t-'+type+'-'+f);
+      if (el) el.value = '';
+    });
+  });
+  updateExpenseTotal();
+}
+
+let trips = [];
+let editingTripId = null;
+let pendingTripFiles = [];
+let tripYear = new Date().getFullYear();
+let tripMonth = new Date().getMonth();
+
+async function loadTrips() {
+  try {
+    const data = await SB.getTrips();
+    trips = data.map(t => ({
+      id: t.id,
+      date: t.date,
+      hourStart: t.hour_start,
+      minStart: t.min_start,
+      hourEnd: t.hour_end,
+      minEnd: t.min_end,
+      destination: t.destination,
+      purpose: t.purpose || '',
+      files: t.files || [],
+      meal: t.meal || false,
+      expense: t.expense || {},
+      createdAt: t.created_at,
+    }));
+  } catch(e) {
+    console.warn('loadTrips fallback to localStorage:', e.message);
+    const saved = localStorage.getItem('mzt-trips-v1');
+    if (saved) trips = JSON.parse(saved);
+  }
+}
+function saveTripsLocal() {
+  localStorage.setItem('mzt-trips-v1', JSON.stringify(trips));
+}
+
+function initTimePicker(hStart=9, mStart=0, hEnd=18, mEnd=0) {
+  const hourOpts = Array.from({length:24},(_,i)=>
+    `<option value="${i}"${i===hStart?' selected':''}>${String(i).padStart(2,'0')} 時</option>`).join('');
+  const hourEndOpts = Array.from({length:24},(_,i)=>
+    `<option value="${i}"${i===hEnd?' selected':''}>${String(i).padStart(2,'0')} 時</option>`).join('');
+  const minOpts = Array.from({length:12},(_,i)=>
+    `<option value="${i*5}"${i*5===mStart?' selected':''}>${String(i*5).padStart(2,'0')} 分</option>`).join('');
+  const minEndOpts = Array.from({length:12},(_,i)=>
+    `<option value="${i*5}"${i*5===mEnd?' selected':''}>${String(i*5).padStart(2,'0')} 分</option>`).join('');
+
+  const sh = document.getElementById('t-hour');
+  const sm = document.getElementById('t-min');
+  const eh = document.getElementById('t-hour-end');
+  const em = document.getElementById('t-min-end');
+  if(sh) sh.innerHTML = hourOpts;
+  if(sm) sm.innerHTML = minOpts;
+  if(eh) eh.innerHTML = hourEndOpts;
+  if(em) em.innerHTML = minEndOpts;
+
+  // Live duration display
+  ['t-hour','t-min','t-hour-end','t-min-end'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.onchange = updateDurationHint;
+  });
+  updateDurationHint();
+}
+
+function updateDurationHint() {
+  const sh = document.getElementById('t-hour');
+  const sm = document.getElementById('t-min');
+  const eh = document.getElementById('t-hour-end');
+  const em = document.getElementById('t-min-end');
+  const hint = document.getElementById('time-duration-hint');
+  if (!sh||!sm||!eh||!em||!hint) return;
+  const startMins = parseInt(sh.value)*60 + parseInt(sm.value);
+  const endMins = parseInt(eh.value)*60 + parseInt(em.value);
+  const diff = endMins - startMins;
+  if (diff <= 0) { hint.textContent = '⚠️ 返回時間需晚於出發時間'; hint.style.color='var(--red)'; return; }
+  const h = Math.floor(diff/60), m = diff%60;
+  hint.textContent = `⏱ 本次出差時數：${h>0?h+'小時':''}${m>0?m+'分鐘':''} （共 ${diff} 分鐘）`;
+  hint.style.color = 'var(--bamboo)';
+}
+
+function calcTripHours(t) {
+  const startMins = t.hourStart * 60 + t.minStart;
+  const endMins = t.hourEnd * 60 + t.minEnd;
+  const diff = endMins - startMins;
+  return diff > 0 ? diff : 0;
+}
+
+function tripMonthPrev() {
+  tripMonth--;
+  if (tripMonth < 0) { tripMonth = 11; tripYear--; }
+  renderTrips();
+}
+function tripMonthNext() {
+  tripMonth++;
+  if (tripMonth > 11) { tripMonth = 0; tripYear++; }
+  renderTrips();
+}
+
+function renderTrips() {
+  // Update month label
+  document.getElementById('trip-month-label').textContent = tripYear + '年 ' + (tripMonth+1) + '月';
+
+  const list = document.getElementById('trip-list');
+  const monthStr = tripYear + '-' + String(tripMonth+1).padStart(2,'0');
+  const monthTrips = trips.filter(t => t.date && t.date.startsWith(monthStr));
+  const sorted = [...monthTrips].sort((a,b) => a.date.localeCompare(b.date));
+
+  // Update stats
+  const statsEl = document.getElementById('trip-stats');
+  if (sorted.length) {
+    statsEl.style.display = 'block';
+    const totalMins = sorted.reduce((s,t) => s + calcTripHours(t), 0);
+    const totalH = Math.floor(totalMins/60);
+    const totalM = totalMins % 60;
+    document.getElementById('ts-count').textContent = sorted.length;
+    document.getElementById('ts-hours').textContent = totalH;
+    document.getElementById('ts-mins').textContent = `${totalH}h${totalM}m`;
+  } else {
+    statsEl.style.display = 'none';
+  }
+
+  if (!sorted.length) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">🚗</div><div class="empty-text">本月尚無出差紀錄<br>點右下角 ＋ 新增</div></div>';
+    return;
+  }
+
+  const days = ['日','一','二','三','四','五','六'];
+  list.innerHTML = sorted.map((t,idx) => {
+    const dt = new Date(t.date+'T00:00:00');
+    const dateLabel = `${dt.getMonth()+1}/${dt.getDate()}（週${days[dt.getDay()]}）`;
+    const timeLabel = `${String(t.hourStart).padStart(2,'0')}:${String(t.minStart).padStart(2,'0')} → ${String(t.hourEnd).padStart(2,'0')}:${String(t.minEnd).padStart(2,'0')}`;
+    const diffMins = calcTripHours(t);
+    const dh = Math.floor(diffMins/60), dm = diffMins%60;
+    const durationLabel = dh>0 ? `${dh}h${dm>0?dm+'m':''}` : `${dm}m`;
+    const receipts = (t.files||[]).map(f => {
+      if (f.type && f.type.startsWith('image/'))
+        return `<img src="${f.dataUrl}" class="trip-receipt-thumb" onclick="openLightbox('${f.dataUrl}')">`;
+      return `<a href="${f.dataUrl}" download="${f.name}" class="attach-pdf">📄 ${esc(f.name)}</a>`;
+    }).join('');
+    return `<div class="trip-card">
+      <div class="trip-card-head">
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span class="trip-badge">出差 ${idx+1}</span>
+            <span class="trip-date">${dateLabel}</span>
+            <span style="background:var(--gold-p);color:var(--gold);font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">⏱ ${durationLabel}</span>
+          </div>
+          <div class="trip-destination">📍 ${esc(t.destination)}</div>
+          <div class="trip-time-row" style="margin-top:4px;">⏰ ${timeLabel}</div>
+        </div>
+        <button class="btn-edit" onclick="openEditTrip('${t.id}')">✏️</button>
+      </div>
+      ${t.purpose ? `<div class="trip-body">${esc(t.purpose)}</div>` : ''}
+      ${(()=>{
+        const exp = t.expense || {};
+        const items = [];
+        if (exp.car) items.push(`🚗 汽車${exp.car.km?` ${exp.car.km}km`:''}${exp.car.amount?' NT$'+exp.car.amount.toLocaleString():''}`);
+        if (exp.hsr) items.push(`🚄 高鐵 NT$${(exp.hsr.amount||0).toLocaleString()}`);
+        if (exp.tra) items.push(`🚂 台鐵 NT$${(exp.tra.amount||0).toLocaleString()}`);
+        if (exp.mrt) items.push(`🚇 捷運 NT$${(exp.mrt.amount||0).toLocaleString()}`);
+        const total = [exp.car?.amount||0, exp.hsr?.amount||0, exp.tra?.amount||0, exp.mrt?.amount||0].reduce((a,b)=>a+b,0);
+        return items.length ? `<div style="padding:8px 14px;border-top:1px solid var(--stone-d);font-size:12px;color:#555;line-height:1.8;">
+          💰 旅費：${items.join(' ＋ ')}<br>
+          <span style="font-weight:700;color:var(--bamboo);">合計 NT$ ${total.toLocaleString()}</span>
+        </div>` : '';
+      })()}
+      ${receipts ? `<div style="padding:0 14px 12px;display:flex;flex-wrap:wrap;gap:6px;">${receipts}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function downloadTripReport() {
+  const monthStr = tripYear + '-' + String(tripMonth+1).padStart(2,'0');
+  const monthTrips = trips.filter(t => t.date && t.date.startsWith(monthStr))
+    .sort((a,b) => a.date.localeCompare(b.date));
+  if (!monthTrips.length) { showToast('本月無出差紀錄'); return; }
+
+  const totalMins = monthTrips.reduce((s,t) => s + calcTripHours(t), 0);
+  const totalH = Math.floor(totalMins/60);
+  const totalM = totalMins % 60;
+  const days = ['日','一','二','三','四','五','六'];
+
+  let totalExpense = 0;
+  const rows = monthTrips.map((t,i) => {
+    const dt = new Date(t.date+'T00:00:00');
+    const dateLabel = `${dt.getFullYear()}/${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}（週${days[dt.getDay()]}）`;
+    const startTime = `${String(t.hourStart).padStart(2,'0')}:${String(t.minStart).padStart(2,'0')}`;
+    const endTime = `${String(t.hourEnd).padStart(2,'0')}:${String(t.minEnd).padStart(2,'0')}`;
+    const diffMins = calcTripHours(t);
+    const dh = Math.floor(diffMins/60), dm = diffMins%60;
+    const durationLabel = dh>0 ? `${dh}h${dm>0?' '+dm+'m':''}` : `${dm}m`;
+    // Expense
+    const exp = t.expense || {};
+    const expItems = [];
+    if (exp.car) expItems.push(`🚗${exp.car.km?exp.car.km+'km':''} NT$${(exp.car.amount||0).toLocaleString()}`);
+    if (exp.hsr) expItems.push(`🚄 NT$${(exp.hsr.amount||0).toLocaleString()}`);
+    if (exp.tra) expItems.push(`🚂 NT$${(exp.tra.amount||0).toLocaleString()}`);
+    if (exp.mrt) expItems.push(`🚇 NT$${(exp.mrt.amount||0).toLocaleString()}`);
+    const tripTotal = [exp.car?.amount||0,exp.hsr?.amount||0,exp.tra?.amount||0,exp.mrt?.amount||0].reduce((a,b)=>a+b,0);
+    totalExpense += tripTotal;
+    return `<tr>
+      <td style="text-align:center;">${i+1}</td>
+      <td>${dateLabel}</td>
+      <td style="text-align:center;">${startTime}</td>
+      <td style="text-align:center;">${endTime}</td>
+      <td style="text-align:center;font-weight:700;color:#1a7f4b;">${durationLabel}</td>
+      <td>${t.destination || ''}</td>
+      <td style="font-size:12px;">${t.purpose || ''}</td>
+      <td style="font-size:11px;">${expItems.join('<br>')}</td>
+      <td style="text-align:right;font-weight:700;color:#1a7f4b;">${tripTotal>0?'NT$ '+tripTotal.toLocaleString():'-'}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>墨竹亭工程部 ${tripYear}年${tripMonth+1}月 出差時數表</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Noto Sans TC',sans-serif;background:#f5f2ec;color:#1a1a18;padding:24px;}
+  .container{max-width:800px;margin:0 auto;background:white;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.12);}
+  .report-header{background:#1a1a18;color:white;padding:24px 28px;}
+  .report-title{font-size:20px;font-weight:700;letter-spacing:1px;}
+  .report-sub{font-size:12px;color:#888;margin-top:4px;letter-spacing:2px;}
+  .report-period{font-size:14px;color:#6aab7c;margin-top:8px;font-weight:600;}
+  .summary-bar{display:flex;gap:0;border-bottom:1px solid #e2ddd4;}
+  .summary-item{flex:1;padding:16px;text-align:center;border-right:1px solid #e2ddd4;}
+  .summary-item:last-child{border-right:none;}
+  .summary-num{font-size:28px;font-weight:700;color:#4a7c59;font-family:monospace;}
+  .summary-label{font-size:11px;color:#888;margin-top:3px;}
+  table{width:100%;border-collapse:collapse;}
+  th{background:#4a7c59;color:white;padding:11px 12px;font-size:12px;text-align:left;letter-spacing:.5px;}
+  td{padding:10px 12px;border-bottom:1px solid #e2ddd4;font-size:13px;vertical-align:top;}
+  tr:nth-child(even) td{background:#f9f9f7;}
+  tr:hover td{background:#e8f3eb;}
+  .total-row td{background:#e8f3eb;font-weight:700;border-top:2px solid #4a7c59;}
+  .footer{padding:16px 28px;font-size:11px;color:#888;text-align:center;border-top:1px solid #e2ddd4;}
+  @media print{body{padding:0;}button{display:none;}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="report-header">
+    <div class="report-title">墨竹亭工程部 出差時數表</div>
+    <div class="report-sub">ENGINEERING DEPT · BUSINESS TRIP REPORT</div>
+    <div class="report-period">${tripYear} 年 ${tripMonth+1} 月份</div>
+  </div>
+  <div class="summary-bar">
+    <div class="summary-item"><div class="summary-num">${monthTrips.length}</div><div class="summary-label">出差次數</div></div>
+    <div class="summary-item"><div class="summary-num">${totalH}h${totalM>0?totalM+'m':''}</div><div class="summary-label">總出差時數</div></div>
+    <div class="summary-item"><div class="summary-num">NT$${totalExpense.toLocaleString()}</div><div class="summary-label">旅費合計</div></div>
+  </div>
+  <div style="padding:0;overflow-x:auto;">
+  <table>
+    <thead><tr>
+      <th style="width:36px;">序</th>
+      <th>日期</th>
+      <th style="width:60px;">出發</th>
+      <th style="width:60px;">返回</th>
+      <th style="width:60px;">時數</th>
+      <th>出差地點</th>
+      <th>出差目的</th>
+      <th>交通方式</th>
+      <th style="width:80px;">旅費</th>
+    </tr></thead>
+    <tbody>
+      ${rows}
+      <tr class="total-row">
+        <td colspan="4" style="text-align:right;">本月合計</td>
+        <td style="color:#1a7f4b;">${totalH}h${totalM>0?' '+totalM+'m':''}</td>
+        <td colspan="3">${monthTrips.length} 筆出差紀錄</td>
+        <td style="text-align:right;color:#1a7f4b;">NT$ ${totalExpense.toLocaleString()}</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="footer">列印日期：${new Date().toLocaleDateString('zh-TW')} · 墨竹亭工程部待辦系統自動產出</div>
+</div>
+<div style="text-align:center;margin-top:16px;">
+  <button onclick="window.print()" style="background:#4a7c59;color:white;border:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-right:8px;">🖨️ 列印</button>
+  <button onclick="window.close()" style="background:#e2ddd4;color:#1a1a18;border:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">關閉</button>
+</div>
+
+<!-- SUPPORT MODAL -->
+<div class="modal-overlay" id="support-modal" onclick="closeSupportModalOnOverlay(event)">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="support-modal-title">新增支援單</div>
+    <div class="form-group">
+      <label class="form-label">支援日期</label>
+      <input class="form-input" id="s-date" type="date">
+    </div>
+    <div class="form-group">
+      <label class="form-label">支援時間 → 結束時間</label>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <select id="s-hour" class="form-select" style="flex:1;padding:12px 8px;font-size:15px;font-weight:700;font-family:'DM Mono',monospace;text-align:center;"></select>
+        <span style="font-size:18px;font-weight:700;color:var(--mist);">:</span>
+        <select id="s-min" class="form-select" style="flex:1;padding:12px 8px;font-size:15px;font-weight:700;font-family:'DM Mono',monospace;text-align:center;"></select>
+        <span style="font-size:16px;color:var(--mist);padding:0 2px;">→</span>
+        <select id="s-hour-end" class="form-select" style="flex:1;padding:12px 8px;font-size:15px;font-weight:700;font-family:'DM Mono',monospace;text-align:center;"></select>
+        <span style="font-size:18px;font-weight:700;color:var(--mist);">:</span>
+        <select id="s-min-end" class="form-select" style="flex:1;padding:12px 8px;font-size:15px;font-weight:700;font-family:'DM Mono',monospace;text-align:center;"></select>
+      </div>
+      <div style="display:flex;font-size:10px;color:var(--mist);margin-top:4px;letter-spacing:1px;">
+        <div style="flex:1;text-align:center;">開始時</div><div style="flex:1;text-align:center;">分</div>
+        <div style="width:20px;"></div>
+        <div style="flex:1;text-align:center;">結束時</div><div style="flex:1;text-align:center;">分</div>
+      </div>
+      <div id="support-duration-hint" style="font-size:12px;color:var(--bamboo);font-weight:700;margin-top:6px;text-align:center;"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">支援分店</label>
+      <select class="form-select" id="s-store">
+        <option value="MZTJS">新竹金山店</option>
+        <option value="MZTGF">新竹光復店</option>
+        <option value="MZTLZL">台北六張犁店</option>
+        <option value="MZTRG">內湖瑞光店</option>
+        <option value="MZTMC">台中美村店</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">支援目的／內容</label>
+      <textarea class="form-textarea" id="s-purpose" placeholder="例：協助廚區設備安裝、現場督導施工"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">餐費</label>
+      <div class="meal-toggle-row" id="support-meal-row" onclick="toggleMeal('support')">
+        <span class="meal-icon">🍱</span>
+        <span class="meal-label">餐費補助</span>
+        <span class="meal-amount">NT$ 100</span>
+        <div class="meal-check" id="support-meal-check"></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">交通費支出</label>
+      <div class="expense-section">
+        <div class="expense-transport-row">
+          <div class="transport-item" id="s-car-item">
+            <div class="transport-head" onclick="toggleSupportTransport('car')">
+              <span class="transport-icon">🚗</span>
+              <span class="transport-name">汽車</span>
+              <div class="transport-toggle" id="s-car-toggle"></div>
+            </div>
+            <div class="transport-inputs" id="s-car-inputs" onclick="event.stopPropagation()">
+              <div class="transport-input-group">
+                <div class="transport-input-label">公里數（km）</div>
+                <input class="transport-input" id="s-car-km" type="number" min="0" placeholder="0" oninput="calcSupportCarAmount()" onclick="event.stopPropagation()">
+              </div>
+              <div class="transport-input-group">
+                <div class="transport-input-label">金額 ＠4.5元/km</div>
+                <input class="transport-input" id="s-car-amount" type="number" min="0" placeholder="自動計算" style="background:#f0fbf5;color:var(--bamboo);font-weight:700;" oninput="updateSupportTotal()" onclick="event.stopPropagation()">
+              </div>
+            </div>
+            <div style="font-size:10px;color:var(--mist);margin-top:4px;padding:0 2px;" id="s-car-hint" style="display:none;">公里數 × 4.5 = 補助金額，可手動調整</div>
+          </div>
+          <div class="transport-item" id="s-hsr-item">
+            <div class="transport-head" onclick="toggleSupportTransport('hsr')">
+              <span class="transport-icon">🚄</span><span class="transport-name">高鐵</span>
+              <div class="transport-toggle" id="s-hsr-toggle"></div>
+            </div>
+            <div class="transport-inputs" id="s-hsr-inputs" onclick="event.stopPropagation()">
+              <div class="transport-input-group">
+                <div class="transport-input-label">金額（元）</div>
+                <input class="transport-input" id="s-hsr-amount" type="number" min="0" placeholder="0" oninput="updateSupportTotal()" onclick="event.stopPropagation()">
+              </div>
+            </div>
+          </div>
+          <div class="transport-item" id="s-tra-item">
+            <div class="transport-head" onclick="toggleSupportTransport('tra')">
+              <span class="transport-icon">🚂</span><span class="transport-name">台鐵</span>
+              <div class="transport-toggle" id="s-tra-toggle"></div>
+            </div>
+            <div class="transport-inputs" id="s-tra-inputs" onclick="event.stopPropagation()">
+              <div class="transport-input-group">
+                <div class="transport-input-label">金額（元）</div>
+                <input class="transport-input" id="s-tra-amount" type="number" min="0" placeholder="0" oninput="updateSupportTotal()" onclick="event.stopPropagation()">
+              </div>
+            </div>
+          </div>
+          <div class="transport-item" id="s-mrt-item">
+            <div class="transport-head" onclick="toggleSupportTransport('mrt')">
+              <span class="transport-icon">🚇</span><span class="transport-name">捷運</span>
+              <div class="transport-toggle" id="s-mrt-toggle"></div>
+            </div>
+            <div class="transport-inputs" id="s-mrt-inputs" onclick="event.stopPropagation()">
+              <div class="transport-input-group">
+                <div class="transport-input-label">金額（元）</div>
+                <input class="transport-input" id="s-mrt-amount" type="number" min="0" placeholder="0" oninput="updateSupportTotal()" onclick="event.stopPropagation()">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="expense-total">
+          <span class="expense-total-label">💰 費用合計（含餐費）</span>
+          <span class="expense-total-amount" id="support-total-display">NT$ 0</span>
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">費用單據（收據／發票）</label>
+      <div class="upload-area" id="support-upload-area"
+        onclick="document.getElementById('s-files').click()"
+        ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="supportDropFiles(event)">
+        <div class="upload-icon">🧾</div>
+        <div class="upload-text">點擊上傳費用單據<br>JPG・PNG・PDF，最大 5MB</div>
+      </div>
+      <input type="file" id="s-files" multiple accept="image/*,.pdf" style="display:none;" onchange="handleSupportFiles(this.files)">
+      <div class="file-list" id="support-file-list"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="closeSupportModal()">取消</button>
+      <button class="btn-primary" id="support-save-btn" onclick="saveSupport()">儲存支援單</button>
+    </div>
+    <div id="support-delete-wrap" style="display:none;margin-top:4px;">
+      <button class="btn-danger" onclick="deleteSupport()">🗑 刪除此支援單</button>
+    </div>
+  </div>
+</div>
+
+</body></html>`;
+
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `墨竹亭工程部_出差時數表_${tripYear}年${tripMonth+1}月.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('📥 出差表單已下載', 2500);
+}
+
+function openAddTrip() {
+  editingTripId = null;
+  pendingTripFiles = [];
+  document.getElementById('trip-modal-title').textContent = '新增出差單';
+  document.getElementById('t-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('t-destination').value = '';
+  document.getElementById('t-purpose').value = '';
+  document.getElementById('trip-file-list').innerHTML = '';
+  document.getElementById('trip-delete-wrap').style.display = 'none';
+  document.getElementById('trip-modal').classList.add('open');
+  resetMeal('trip'); setTimeout(() => { initTimePicker(9,0,18,0); resetExpenseForm(); }, 50);
+}
+
+function openEditTrip(id) {
+  editingTripId = id;
+  const t = trips.find(x=>x.id===id);
+  if (!t) return;
+  document.getElementById('trip-modal-title').textContent = '編輯出差單';
+  document.getElementById('t-date').value = t.date;
+  document.getElementById('t-destination').value = t.destination;
+  document.getElementById('t-purpose').value = t.purpose || '';
+  pendingTripFiles = t.files ? [...t.files] : [];
+  renderTripFileList();
+  document.getElementById('trip-delete-wrap').style.display = 'block';
+  tripMeal = t.meal || false;
+  const tripMealRow = document.getElementById('trip-meal-row');
+  if (tripMealRow) tripMealRow.classList.toggle('active', tripMeal);
+  document.getElementById('trip-modal').classList.add('open');
+  setTimeout(() => {
+    initTimePicker(
+      parseInt(t.hourStart)||9, parseInt(t.minStart)||0,
+      parseInt(t.hourEnd)||18, parseInt(t.minEnd)||0
+    );
+    setExpenseData(t.expense || {});
+  }, 50);
+}
+
+function closeTripModal() { document.getElementById('trip-modal').classList.remove('open'); }
+function closeTripModalOnOverlay(e) { if(e.target===document.getElementById('trip-modal')) closeTripModal(); }
+
+function handleTripFiles(fl) {
+  Array.from(fl).forEach(file => {
+    if (file.size > 5*1024*1024) { showToast('❌ 超過5MB：'+file.name,2500); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      pendingTripFiles.push({name:file.name,size:file.size,type:file.type,dataUrl:e.target.result});
+      renderTripFileList();
+    };
+    reader.readAsDataURL(file);
+  });
+  document.getElementById('t-files').value = '';
+}
+function tripDropFiles(e) {
+  e.preventDefault();
+  document.getElementById('trip-upload-area').classList.remove('drag');
+  handleTripFiles(e.dataTransfer.files);
+}
+function removeTripFile(i) { pendingTripFiles.splice(i,1); renderTripFileList(); }
+function renderTripFileList() {
+  const el = document.getElementById('trip-file-list');
+  if (!el) return;
+  el.innerHTML = pendingTripFiles.map((f,i) => {
+    const isImg = f.type&&f.type.startsWith('image/');
+    const sz = f.size>1048576?(f.size/1048576).toFixed(1)+'MB':Math.round(f.size/1024)+'KB';
+    return '<div class="file-item">'
+      +'<span class="file-icon">'+(isImg?'🖼️':'🧾')+'</span>'
+      +'<span class="file-name">'+esc(f.name)+'</span>'
+      +'<span class="file-size">'+sz+'</span>'
+      +'<button class="file-del" onclick="removeTripFile('+i+')">✕</button>'
+      +'</div>'
+      +(isImg?'<img src="'+f.dataUrl+'" class="file-preview-img">':'');
+  }).join('');
+}
+
+async function saveTrip() {
+  const date = document.getElementById('t-date').value;
+  const destination = document.getElementById('t-destination').value.trim();
+  if (!date || !destination) { showToast('⚠️ 請填寫日期和出差地點'); return; }
+
+  const btn = document.getElementById('trip-save-btn');
+  btn.disabled = true; btn.textContent = '儲存中...';
+
+  // Limit file dataUrl size for Supabase (max ~1MB per file)
+  const filesForStorage = pendingTripFiles.map(f => ({
+    name: f.name, size: f.size, type: f.type,
+    dataUrl: f.dataUrl && f.dataUrl.length > 500000
+      ? f.dataUrl.substring(0, 500000)
+      : (f.dataUrl || '')
+  }));
+
+  const sbData = {
+    date,
+    hour_start: parseInt(document.getElementById('t-hour').value) || 9,
+    min_start: parseInt(document.getElementById('t-min').value) || 0,
+    hour_end: parseInt(document.getElementById('t-hour-end').value) || 18,
+    min_end: parseInt(document.getElementById('t-min-end').value) || 0,
+    destination,
+    purpose: document.getElementById('t-purpose').value.trim(),
+    meal: tripMeal,
+    files: filesForStorage,
+    expense: getExpenseData() || {},
+  };
+
+  try {
+    setSyncStatus('loading');
+    if (editingTripId) {
+      await SB.updateTrip(editingTripId, sbData);
+      const idx = trips.findIndex(t=>t.id===editingTripId);
+      if (idx>=0) trips[idx] = {
+        ...trips[idx],
+        date: sbData.date, hourStart: sbData.hour_start, minStart: sbData.min_start,
+        hourEnd: sbData.hour_end, minEnd: sbData.min_end,
+        destination: sbData.destination, purpose: sbData.purpose,
+        meal: sbData.meal, files: sbData.files, expense: sbData.expense
+      };
+      showToast('✅ 出差單已更新');
+    } else {
+      const newId = genId();
+      sbData.id = newId;
+      await SB.addTrip(sbData);
+      trips.unshift({
+        id: newId, date: sbData.date,
+        hourStart: sbData.hour_start, minStart: sbData.min_start,
+        hourEnd: sbData.hour_end, minEnd: sbData.min_end,
+        destination: sbData.destination, purpose: sbData.purpose,
+        meal: sbData.meal, files: sbData.files, expense: sbData.expense,
+        createdAt: new Date().toISOString()
+      });
+      showToast('✅ 出差單已新增並同步');
+    }
+    setSyncStatus('ok');
+    closeTripModal();
+    renderTrips();
+  } catch(e) {
+    setSyncStatus('err');
+    showToast('❌ 同步失敗：' + e.message, 3000);
+    console.error('saveTrip error:', e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '儲存出差單';
+  }
+}
+
+async function deleteTrip() {
+  if (!editingTripId || !confirm('確定刪除此出差單？')) return;
+  try {
+    setSyncStatus('loading');
+    await SB.deleteTrip(editingTripId);
+    trips = trips.filter(t=>t.id!==editingTripId);
+    setSyncStatus('ok');
+    showToast('🗑 已刪除');
+  } catch(e) {
+    setSyncStatus('err');
+    showToast('❌ 刪除失敗：' + e.message, 3000);
+    return;
+  }
+  closeTripModal();
+  renderTrips();
+}
+
+// ═══════════════════════════════════════════════
+// MEAL TOGGLE
+// ═══════════════════════════════════════════════
+const MEAL_AMOUNT = 100;
+let tripMeal = false;
+let supportMeal = false;
+
+function toggleMeal(type) {
+  if (type === 'trip') {
+    tripMeal = !tripMeal;
+    const row = document.getElementById('trip-meal-row');
+    if (row) row.classList.toggle('active', tripMeal);
+    updateExpenseTotal();
+  } else {
+    supportMeal = !supportMeal;
+    const row = document.getElementById('support-meal-row');
+    if (row) row.classList.toggle('active', supportMeal);
+    updateSupportTotal();
+  }
+}
+
+function resetMeal(type) {
+  if (type === 'trip') {
+    tripMeal = false;
+    const row = document.getElementById('trip-meal-row');
+    if (row) row.classList.remove('active');
+  } else {
+    supportMeal = false;
+    const row = document.getElementById('support-meal-row');
+    if (row) row.classList.remove('active');
+  }
+}
+
+// Patch updateExpenseTotal to include meal
+const _origUpdateExpense = updateExpenseTotal;
+updateExpenseTotal = function() {
+  let total = 0;
+  total += parseInt(document.getElementById('t-car-amount')?.value || 0) || 0;
+  total += parseInt(document.getElementById('t-hsr-amount')?.value || 0) || 0;
+  total += parseInt(document.getElementById('t-tra-amount')?.value || 0) || 0;
+  total += parseInt(document.getElementById('t-mrt-amount')?.value || 0) || 0;
+  if (tripMeal) total += MEAL_AMOUNT;
+  const el = document.getElementById('expense-total-display');
+  if (el) el.textContent = 'NT$ ' + total.toLocaleString();
+};
+
+// ═══════════════════════════════════════════════
+// SUPPORT TRANSPORT
+// ═══════════════════════════════════════════════
+const SUPPORT_TRANSPORT_TYPES = ['car','hsr','tra','mrt'];
+
+function toggleSupportTransport(type) {
+  const item = document.getElementById('s-'+type+'-item');
+  if (!item) return;
+  const isActive = item.classList.contains('active');
+  item.classList.toggle('active', !isActive);
+  if (isActive) {
+    ['km','amount'].forEach(f => {
+      const el = document.getElementById('s-'+type+'-'+f);
+      if (el) el.value = '';
+    });
+  }
+  updateSupportTotal();
+}
+
+function calcSupportCarAmount() {
+  const kmEl = document.getElementById('s-car-km');
+  const amtEl = document.getElementById('s-car-amount');
+  if (!kmEl || !amtEl) return;
+  const km = parseFloat(kmEl.value) || 0;
+  amtEl.value = km > 0 ? Math.round(km * CAR_RATE) : '';
+  updateSupportTotal();
+}
+
+function updateSupportTotal() {
+  let total = 0;
+  total += parseInt(document.getElementById('s-car-amount')?.value || 0) || 0;
+  total += parseInt(document.getElementById('s-hsr-amount')?.value || 0) || 0;
+  total += parseInt(document.getElementById('s-tra-amount')?.value || 0) || 0;
+  total += parseInt(document.getElementById('s-mrt-amount')?.value || 0) || 0;
+  if (supportMeal) total += MEAL_AMOUNT;
+  const el = document.getElementById('support-total-display');
+  if (el) el.textContent = 'NT$ ' + total.toLocaleString();
+}
+
+function getSupportExpenseData() {
+  const car = document.getElementById('s-car-item')?.classList.contains('active');
+  const hsr = document.getElementById('s-hsr-item')?.classList.contains('active');
+  const tra = document.getElementById('s-tra-item')?.classList.contains('active');
+  const mrt = document.getElementById('s-mrt-item')?.classList.contains('active');
+  return {
+    car: car ? {km:parseInt(document.getElementById('s-car-km')?.value)||0, amount:parseInt(document.getElementById('s-car-amount')?.value)||0} : null,
+    hsr: hsr ? {amount:parseInt(document.getElementById('s-hsr-amount')?.value)||0} : null,
+    tra: tra ? {amount:parseInt(document.getElementById('s-tra-amount')?.value)||0} : null,
+    mrt: mrt ? {amount:parseInt(document.getElementById('s-mrt-amount')?.value)||0} : null,
+  };
+}
+
+function setSupportExpenseData(expense) {
+  SUPPORT_TRANSPORT_TYPES.forEach(type => {
+    const item = document.getElementById('s-'+type+'-item');
+    if (!item) return;
+    const data = expense?.[type];
+    if (data) {
+      item.classList.add('active');
+      if (type==='car') { const km=document.getElementById('s-car-km'); if(km&&data.km) km.value=data.km; }
+      const amt = document.getElementById('s-'+type+'-amount');
+      if (amt && data.amount) amt.value = data.amount;
+    } else { item.classList.remove('active'); }
+  });
+  updateSupportTotal();
+}
+
+function resetSupportForm() {
+  SUPPORT_TRANSPORT_TYPES.forEach(type => {
+    const item = document.getElementById('s-'+type+'-item');
+    if (item) item.classList.remove('active');
+    ['km','amount'].forEach(f => { const el=document.getElementById('s-'+type+'-'+f); if(el) el.value=''; });
+  });
+  updateSupportTotal();
+}
+
+// ═══════════════════════════════════════════════
+// SUPPORT SHEET DATA
+// ═══════════════════════════════════════════════
+let supports = [];
+let editingSupportId = null;
+let pendingSupportFiles = [];
+let supportYear = new Date().getFullYear();
+let supportMonth = new Date().getMonth();
+
+const SUPPORT_STORES = [
+  {id:'MZTJS',name:'新竹金山店'},
+  {id:'MZTGF',name:'新竹光復店'},
+  {id:'MZTLZL',name:'台北六張犁店'},
+  {id:'MZTRG',name:'內湖瑞光店'},
+  {id:'MZTMC',name:'台中美村店'},
+];
+
+async function loadSupports() {
+  try {
+    const data = await SB.getSupports();
+    supports = data.map(s => ({
+      id:s.id, date:s.date,
+      hourStart:s.hour_start, minStart:s.min_start,
+      hourEnd:s.hour_end, minEnd:s.min_end,
+      storeId:s.store_id, purpose:s.purpose||'',
+      meal:s.meal||false, expense:s.expense||{}, files:s.files||[],
+      createdAt:s.created_at,
+    }));
+  } catch(e) { console.warn('loadSupports error:',e.message); supports=[]; }
+}
+
+function initSupportTimePicker(hS=9,mS=0,hE=18,mE=0) {
+  const hOpts = Array.from({length:24},(_,i)=>`<option value="${i}"${i===hS?' selected':''}>${String(i).padStart(2,'0')} 時</option>`).join('');
+  const hEOpts = Array.from({length:24},(_,i)=>`<option value="${i}"${i===hE?' selected':''}>${String(i).padStart(2,'0')} 時</option>`).join('');
+  const mOpts = Array.from({length:12},(_,i)=>`<option value="${i*5}"${i*5===mS?' selected':''}>${String(i*5).padStart(2,'0')} 分</option>`).join('');
+  const mEOpts = Array.from({length:12},(_,i)=>`<option value="${i*5}"${i*5===mE?' selected':''}>${String(i*5).padStart(2,'0')} 分</option>`).join('');
+  const sh=document.getElementById('s-hour'), sm=document.getElementById('s-min');
+  const eh=document.getElementById('s-hour-end'), em=document.getElementById('s-min-end');
+  if(sh) sh.innerHTML=hOpts; if(sm) sm.innerHTML=mOpts;
+  if(eh) eh.innerHTML=hEOpts; if(em) em.innerHTML=mEOpts;
+  ['s-hour','s-min','s-hour-end','s-min-end'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.onchange=updateSupportDurationHint;
+  });
+  updateSupportDurationHint();
+}
+
+function updateSupportDurationHint() {
+  const sh=document.getElementById('s-hour'),sm=document.getElementById('s-min');
+  const eh=document.getElementById('s-hour-end'),em=document.getElementById('s-min-end');
+  const hint=document.getElementById('support-duration-hint');
+  if(!sh||!sm||!eh||!em||!hint) return;
+  const diff=(parseInt(eh.value)*60+parseInt(em.value))-(parseInt(sh.value)*60+parseInt(sm.value));
+  if(diff<=0){hint.textContent='⚠️ 結束時間需晚於開始時間';hint.style.color='var(--red)';return;}
+  const h=Math.floor(diff/60),m=diff%60;
+  hint.textContent=`⏱ 支援時數：${h>0?h+'小時':''}${m>0?m+'分鐘':''} （共 ${diff} 分鐘）`;
+  hint.style.color='var(--bamboo)';
+}
+
+// ═══ SUPPORT MODAL ═══
+function openAddSupport() {
+  editingSupportId=null; pendingSupportFiles=[];
+  document.getElementById('support-modal-title').textContent='新增支援單';
+  document.getElementById('s-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('s-purpose').value='';
+  document.getElementById('s-store').value='MZTJS';
+  document.getElementById('support-file-list').innerHTML='';
+  document.getElementById('support-delete-wrap').style.display='none';
+  resetMeal('support'); resetSupportForm();
+  document.getElementById('support-modal').classList.add('open');
+  setTimeout(()=>initSupportTimePicker(9,0,18,0),50);
+}
+
+function openEditSupport(id) {
+  editingSupportId=id;
+  const s=supports.find(x=>x.id===id);
+  if(!s) return;
+  document.getElementById('support-modal-title').textContent='編輯支援單';
+  document.getElementById('s-date').value=s.date;
+  document.getElementById('s-store').value=s.storeId;
+  document.getElementById('s-purpose').value=s.purpose||'';
+  pendingSupportFiles=s.files?[...s.files]:[];
+  renderSupportFileList();
+  document.getElementById('support-delete-wrap').style.display='block';
+  supportMeal=s.meal||false;
+  const row=document.getElementById('support-meal-row');
+  if(row) row.classList.toggle('active',supportMeal);
+  resetSupportForm(); setSupportExpenseData(s.expense||{});
+  document.getElementById('support-modal').classList.add('open');
+  setTimeout(()=>initSupportTimePicker(s.hourStart||9,s.minStart||0,s.hourEnd||18,s.minEnd||0),50);
+}
+
+function closeSupportModal() { document.getElementById('support-modal').classList.remove('open'); }
+function closeSupportModalOnOverlay(e) { if(e.target===document.getElementById('support-modal')) closeSupportModal(); }
+
+function handleSupportFiles(fl) {
+  Array.from(fl).forEach(file=>{
+    if(file.size>5*1024*1024){showToast('❌ 超過5MB：'+file.name,2500);return;}
+    const reader=new FileReader();
+    reader.onload=e=>{pendingSupportFiles.push({name:file.name,size:file.size,type:file.type,dataUrl:e.target.result});renderSupportFileList();};
+    reader.readAsDataURL(file);
+  });
+  document.getElementById('s-files').value='';
+}
+function supportDropFiles(e){e.preventDefault();document.getElementById('support-upload-area').classList.remove('drag');handleSupportFiles(e.dataTransfer.files);}
+function removeSupportFile(i){pendingSupportFiles.splice(i,1);renderSupportFileList();}
+function renderSupportFileList(){
+  const el=document.getElementById('support-file-list');
+  if(!el) return;
+  el.innerHTML=pendingSupportFiles.map((f,i)=>{
+    const isImg=f.type&&f.type.startsWith('image/');
+    const sz=f.size>1048576?(f.size/1048576).toFixed(1)+'MB':Math.round(f.size/1024)+'KB';
+    return '<div class="file-item"><span class="file-icon">'+(isImg?'🖼️':'🧾')+'</span><span class="file-name">'+esc(f.name)+'</span><span class="file-size">'+sz+'</span><button class="file-del" onclick="removeSupportFile('+i+')">✕</button></div>'+(isImg?'<img src="'+f.dataUrl+'" class="file-preview-img">':'');
+  }).join('');
+}
+
+async function saveSupport() {
+  const date=document.getElementById('s-date').value;
+  const storeId=document.getElementById('s-store').value;
+  if(!date||!storeId){showToast('⚠️ 請填寫日期和支援分店');return;}
+  const btn=document.getElementById('support-save-btn');
+  btn.disabled=true; btn.textContent='儲存中...';
+  const filesForStorage=pendingSupportFiles.map(f=>({name:f.name,size:f.size,type:f.type,dataUrl:f.dataUrl&&f.dataUrl.length>500000?f.dataUrl.substring(0,500000):(f.dataUrl||'')}));
+  const sbData={
+    date, store_id:storeId,
+    hour_start:parseInt(document.getElementById('s-hour').value)||9,
+    min_start:parseInt(document.getElementById('s-min').value)||0,
+    hour_end:parseInt(document.getElementById('s-hour-end').value)||18,
+    min_end:parseInt(document.getElementById('s-min-end').value)||0,
+    purpose:document.getElementById('s-purpose').value.trim(),
+    meal:supportMeal, expense:getSupportExpenseData()||{}, files:filesForStorage,
+  };
+  try {
+    setSyncStatus('loading');
+    if(editingSupportId){
+      await SB.updateSupport(editingSupportId,sbData);
+      const idx=supports.findIndex(s=>s.id===editingSupportId);
+      if(idx>=0) supports[idx]={...supports[idx],date:sbData.date,storeId:sbData.store_id,
+        hourStart:sbData.hour_start,minStart:sbData.min_start,hourEnd:sbData.hour_end,minEnd:sbData.min_end,
+        purpose:sbData.purpose,meal:sbData.meal,expense:sbData.expense,files:sbData.files};
+      showToast('✅ 支援單已更新');
+    } else {
+      const newId=genId(); sbData.id=newId;
+      await SB.addSupport(sbData);
+      supports.unshift({id:newId,date:sbData.date,storeId:sbData.store_id,
+        hourStart:sbData.hour_start,minStart:sbData.min_start,hourEnd:sbData.hour_end,minEnd:sbData.min_end,
+        purpose:sbData.purpose,meal:sbData.meal,expense:sbData.expense,files:sbData.files,createdAt:new Date().toISOString()});
+      showToast('✅ 支援單已新增並同步');
+    }
+    setSyncStatus('ok'); closeSupportModal(); renderSupports();
+  } catch(e){setSyncStatus('err');showToast('❌ 同步失敗：'+e.message,3000);}
+  finally{btn.disabled=false;btn.textContent='儲存支援單';}
+}
+
+async function deleteSupport() {
+  if(!editingSupportId||!confirm('確定刪除此支援單？')) return;
+  try{
+    setSyncStatus('loading');
+    await SB.deleteSupport(editingSupportId);
+    supports=supports.filter(s=>s.id!==editingSupportId);
+    setSyncStatus('ok'); showToast('🗑 已刪除');
+    closeSupportModal(); renderSupports();
+  }catch(e){setSyncStatus('err');showToast('❌ 刪除失敗：'+e.message,3000);}
+}
+
+function supportMonthPrev(){supportMonth--;if(supportMonth<0){supportMonth=11;supportYear--;}renderSupports();}
+function supportMonthNext(){supportMonth++;if(supportMonth>11){supportMonth=0;supportYear++;}renderSupports();}
+
+function calcSupportHours(s){
+  const diff=(s.hourEnd*60+s.minEnd)-(s.hourStart*60+s.minStart);
+  return diff>0?diff:0;
+}
+
+function renderSupports(){
+  document.getElementById('support-month-label').textContent=supportYear+'年 '+(supportMonth+1)+'月';
+  const monthStr=supportYear+'-'+String(supportMonth+1).padStart(2,'0');
+  const monthSupports=supports.filter(s=>s.date&&s.date.startsWith(monthStr)).sort((a,b)=>a.date.localeCompare(b.date));
+  const list=document.getElementById('support-list');
+  const statsEl=document.getElementById('support-stats');
+  if(monthSupports.length){
+    statsEl.style.display='block';
+    const totalMins=monthSupports.reduce((s,t)=>s+calcSupportHours(t),0);
+    let totalExpense=0;
+    monthSupports.forEach(s=>{
+      if(s.meal) totalExpense+=MEAL_AMOUNT;
+      const exp=s.expense||{};
+      totalExpense+=[exp.car?.amount||0,exp.hsr?.amount||0,exp.tra?.amount||0,exp.mrt?.amount||0].reduce((a,b)=>a+b,0);
+    });
+    document.getElementById('ss-count').textContent=monthSupports.length;
+    document.getElementById('ss-hours').textContent=Math.floor(totalMins/60);
+    document.getElementById('ss-expense').textContent='NT$'+totalExpense.toLocaleString();
+  } else { statsEl.style.display='none'; }
+
+  if(!monthSupports.length){list.innerHTML='<div class="empty"><div class="empty-icon">🏪</div><div class="empty-text">本月尚無支援紀錄<br>點右下角 ＋ 新增</div></div>';return;}
+  const days=['日','一','二','三','四','五','六'];
+  list.innerHTML=monthSupports.map(s=>{
+    const dt=new Date(s.date+'T00:00:00');
+    const dateLabel=`${dt.getMonth()+1}/${dt.getDate()}（週${days[dt.getDay()]}）`;
+    const timeLabel=`${String(s.hourStart).padStart(2,'0')}:${String(s.minStart).padStart(2,'0')} → ${String(s.hourEnd).padStart(2,'0')}:${String(s.minEnd).padStart(2,'0')}`;
+    const diffMins=calcSupportHours(s);
+    const dh=Math.floor(diffMins/60),dm=diffMins%60;
+    const durLabel=dh>0?`${dh}h${dm>0?dm+'m':''}`:dm>0?`${dm}m`:'';
+    const storeName=SUPPORT_STORES.find(x=>x.id===s.storeId)?.name||s.storeId;
+    const exp=s.expense||{};
+    const expItems=[];
+    if(s.meal) expItems.push('🍱 NT$100');
+    if(exp.car) expItems.push(`🚗${exp.car.km?exp.car.km+'km':''} NT$${(exp.car.amount||0).toLocaleString()}`);
+    if(exp.hsr) expItems.push(`🚄 NT$${(exp.hsr.amount||0).toLocaleString()}`);
+    if(exp.tra) expItems.push(`🚂 NT$${(exp.tra.amount||0).toLocaleString()}`);
+    if(exp.mrt) expItems.push(`🚇 NT$${(exp.mrt.amount||0).toLocaleString()}`);
+    let total=s.meal?MEAL_AMOUNT:0;
+    total+=[exp.car?.amount||0,exp.hsr?.amount||0,exp.tra?.amount||0,exp.mrt?.amount||0].reduce((a,b)=>a+b,0);
+    return `<div class="trip-card">
+      <div class="trip-card-head">
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span class="trip-badge" style="background:var(--gold-p);color:var(--gold);">支援</span>
+            <span class="trip-date">${dateLabel}</span>
+            ${durLabel?`<span style="background:var(--gold-p);color:var(--gold);font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">⏱ ${durLabel}</span>`:''}
+          </div>
+          <div class="trip-destination">🏪 ${esc(storeName)}</div>
+          <div class="trip-time-row" style="margin-top:4px;">⏰ ${timeLabel}</div>
+        </div>
+        <button class="btn-edit" onclick="openEditSupport('${s.id}')">✏️</button>
+      </div>
+      ${s.purpose?`<div class="trip-body">${esc(s.purpose)}</div>`:''}
+      ${expItems.length?`<div style="padding:8px 14px;border-top:1px solid var(--stone-d);font-size:12px;color:#555;line-height:1.8;">
+        ${expItems.join(' ＋ ')}<br>
+        <span style="font-weight:700;color:var(--gold);">合計 NT$ ${total.toLocaleString()}</span>
+      </div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ═══ EXCEL DOWNLOAD ═══
+function generateExcelXML(headers, rows, sheetName) {
+  const ex = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const hRow = headers.map(h=>`<Cell ss:StyleID="hdr"><Data ss:Type="String">${ex(h)}</Data></Cell>`).join('');
+  const dRows = rows.map(row=>'<Row>'+row.map(cell=>{
+    const isNum=typeof cell==='number'&&cell!=='';
+    return `<Cell><Data ss:Type="${isNum?'Number':'String'}">${ex(cell)}</Data></Cell>`;
+  }).join('')+'</Row>').join('');
+  return `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+<Styles><Style ss:ID="hdr"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#4a7c59" ss:Pattern="Solid"/></Style></Styles>
+<Worksheet ss:Name="${ex(sheetName)}"><Table><Row>${hRow}</Row>${dRows}</Table></Worksheet></Workbook>`;
+}
+
+function downloadTripReport() {
+  const monthStr=tripYear+'-'+String(tripMonth+1).padStart(2,'0');
+  const monthTrips=trips.filter(t=>t.date&&t.date.startsWith(monthStr)).sort((a,b)=>a.date.localeCompare(b.date));
+  if(!monthTrips.length){showToast('本月無出差紀錄');return;}
+  const days=['日','一','二','三','四','五','六'];
+  const headers=['序','日期','出發','返回','時數(h)','時數(min)','出差地點','出差目的','餐費','汽車km','汽車費','高鐵','台鐵','捷運','旅費合計'];
+  const rows=monthTrips.map((t,i)=>{
+    const dt=new Date(t.date+'T00:00:00');
+    const d=`${dt.getFullYear()}/${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}（週${days[dt.getDay()]}）`;
+    const st=`${String(t.hourStart).padStart(2,'0')}:${String(t.minStart).padStart(2,'0')}`;
+    const et=`${String(t.hourEnd).padStart(2,'0')}:${String(t.minEnd).padStart(2,'0')}`;
+    const mins=calcTripHours(t);
+    const exp=t.expense||{};
+    const meal=t.meal?100:0;
+    const total=meal+(exp.car?.amount||0)+(exp.hsr?.amount||0)+(exp.tra?.amount||0)+(exp.mrt?.amount||0);
+    return [i+1,d,st,et,Math.floor(mins/60),mins,t.destination||'',t.purpose||'',meal||'',
+      exp.car?.km||'',exp.car?.amount||'',exp.hsr?.amount||'',exp.tra?.amount||'',exp.mrt?.amount||'',total||''];
+  });
+  const xml=generateExcelXML(headers,rows,tripYear+'年'+(tripMonth+1)+'月出差單');
+  const blob=new Blob([xml],{type:'application/vnd.ms-excel;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`墨竹亭工程部_出差單_${tripYear}年${tripMonth+1}月.xls`;
+  a.click(); URL.revokeObjectURL(url);
+  showToast('📥 出差單 Excel 已下載',2500);
+}
+
+function downloadSupportReport() {
+  const monthStr=supportYear+'-'+String(supportMonth+1).padStart(2,'0');
+  const monthSupports=supports.filter(s=>s.date&&s.date.startsWith(monthStr)).sort((a,b)=>a.date.localeCompare(b.date));
+  if(!monthSupports.length){showToast('本月無支援紀錄');return;}
+  const days=['日','一','二','三','四','五','六'];
+  const headers=['序','日期','開始','結束','時數(h)','時數(min)','支援分店','支援內容','餐費','汽車km','汽車費','高鐵','台鐵','捷運','費用合計'];
+  const rows=monthSupports.map((s,i)=>{
+    const dt=new Date(s.date+'T00:00:00');
+    const d=`${dt.getFullYear()}/${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}（週${days[dt.getDay()]}）`;
+    const st=`${String(s.hourStart).padStart(2,'0')}:${String(s.minStart).padStart(2,'0')}`;
+    const et=`${String(s.hourEnd).padStart(2,'0')}:${String(s.minEnd).padStart(2,'0')}`;
+    const mins=calcSupportHours(s);
+    const exp=s.expense||{};
+    const storeName=SUPPORT_STORES.find(x=>x.id===s.storeId)?.name||s.storeId;
+    const meal=s.meal?100:0;
+    const total=meal+(exp.car?.amount||0)+(exp.hsr?.amount||0)+(exp.tra?.amount||0)+(exp.mrt?.amount||0);
+    return [i+1,d,st,et,Math.floor(mins/60),mins,storeName,s.purpose||'',meal||'',
+      exp.car?.km||'',exp.car?.amount||'',exp.hsr?.amount||'',exp.tra?.amount||'',exp.mrt?.amount||'',total||''];
+  });
+  const xml=generateExcelXML(headers,rows,supportYear+'年'+(supportMonth+1)+'月支援單');
+  const blob=new Blob([xml],{type:'application/vnd.ms-excel;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`墨竹亭工程部_支援單_${supportYear}年${supportMonth+1}月.xls`;
+  a.click(); URL.revokeObjectURL(url);
+  showToast('📥 支援單 Excel 已下載',2500);
+}
+
+init();
+</script>
+
+<!-- TRIP MODAL -->
+<div class="modal-overlay" id="trip-modal" onclick="closeTripModalOnOverlay(event)">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="trip-modal-title">新增出差單</div>
+    <div class="form-group">
+      <label class="form-label">出差日期</label>
+      <input class="form-input" id="t-date" type="date">
+    </div>
+    <div class="form-group">
+      <label class="form-label">出發時間 → 返回時間</label>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <select id="t-hour" class="form-select" style="flex:1;padding:12px 8px;font-size:15px;font-weight:700;font-family:'DM Mono',monospace;text-align:center;"></select>
+        <span style="font-size:18px;font-weight:700;color:var(--mist);">:</span>
+        <select id="t-min" class="form-select" style="flex:1;padding:12px 8px;font-size:15px;font-weight:700;font-family:'DM Mono',monospace;text-align:center;"></select>
+        <span style="font-size:16px;color:var(--mist);padding:0 2px;">→</span>
+        <select id="t-hour-end" class="form-select" style="flex:1;padding:12px 8px;font-size:15px;font-weight:700;font-family:'DM Mono',monospace;text-align:center;"></select>
+        <span style="font-size:18px;font-weight:700;color:var(--mist);">:</span>
+        <select id="t-min-end" class="form-select" style="flex:1;padding:12px 8px;font-size:15px;font-weight:700;font-family:'DM Mono',monospace;text-align:center;"></select>
+      </div>
+      <div style="display:flex;font-size:10px;color:var(--mist);margin-top:4px;letter-spacing:1px;">
+        <div style="flex:1;text-align:center;">出發時</div>
+        <div style="flex:1;text-align:center;">分</div>
+        <div style="width:20px;"></div>
+        <div style="flex:1;text-align:center;">返回時</div>
+        <div style="flex:1;text-align:center;">分</div>
+      </div>
+      <div id="time-duration-hint" style="font-size:12px;color:var(--bamboo);font-weight:700;margin-top:6px;text-align:center;"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">出差地點／分店</label>
+      <input class="form-input" id="t-destination" type="text" placeholder="例：台北行天宮店、新竹金山店">
+    </div>
+    <div class="form-group">
+      <label class="form-label">出差目的</label>
+      <textarea class="form-textarea" id="t-purpose" placeholder="例：冷氣安裝現場監工、廠商會議"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">餐費</label>
+      <div class="meal-toggle-row" id="trip-meal-row" onclick="toggleMeal('trip')">
+        <span class="meal-icon">🍱</span>
+        <span class="meal-label">餐費補助</span>
+        <span class="meal-amount">NT$ 100</span>
+        <div class="meal-check" id="trip-meal-check"></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">旅費支出</label>
+      <div class="expense-section">
+        <div class="expense-transport-row">
+
+          <!-- 汽車 -->
+          <div class="transport-item" id="t-car-item">
+            <div class="transport-head" onclick="toggleTransport('car')">
+              <span class="transport-icon">🚗</span>
+              <span class="transport-name">汽車</span>
+              <div class="transport-toggle" id="t-car-toggle"></div>
+            </div>
+            <div class="transport-inputs" id="t-car-inputs" onclick="event.stopPropagation()">
+              <div class="transport-input-group">
+                <div class="transport-input-label">公里數（km）</div>
+                <input class="transport-input" id="t-car-km" type="number" min="0" placeholder="0" oninput="calcCarAmount()" onclick="event.stopPropagation()">
+              </div>
+              <div class="transport-input-group">
+                <div class="transport-input-label">金額（元）＠ 4.5元/km</div>
+                <input class="transport-input" id="t-car-amount" type="number" min="0" placeholder="自動計算" style="background:#f0fbf5;color:var(--bamboo);font-weight:700;" oninput="updateExpenseTotal()" onclick="event.stopPropagation()">
+              </div>
+            </div>
+            <div style="font-size:10px;color:var(--mist);margin-top:4px;">公里數 × 4.5 = 補助金額，可手動調整</div>
+          </div>
+
+          <!-- 高鐵 -->
+          <div class="transport-item" id="t-hsr-item">
+            <div class="transport-head" onclick="toggleTransport('hsr')">
+              <span class="transport-icon">🚄</span>
+              <span class="transport-name">高鐵</span>
+              <div class="transport-toggle" id="t-hsr-toggle"></div>
+            </div>
+            <div class="transport-inputs" id="t-hsr-inputs" onclick="event.stopPropagation()">
+              <div class="transport-input-group">
+                <div class="transport-input-label">金額（元）</div>
+                <input class="transport-input" id="t-hsr-amount" type="number" min="0" placeholder="0" oninput="updateExpenseTotal()" onclick="event.stopPropagation()">
+              </div>
+            </div>
+          </div>
+
+          <!-- 台鐵 -->
+          <div class="transport-item" id="t-tra-item">
+            <div class="transport-head" onclick="toggleTransport('tra')">
+              <span class="transport-icon">🚂</span>
+              <span class="transport-name">台鐵</span>
+              <div class="transport-toggle" id="t-tra-toggle"></div>
+            </div>
+            <div class="transport-inputs" id="t-tra-inputs" onclick="event.stopPropagation()">
+              <div class="transport-input-group">
+                <div class="transport-input-label">金額（元）</div>
+                <input class="transport-input" id="t-tra-amount" type="number" min="0" placeholder="0" oninput="updateExpenseTotal()" onclick="event.stopPropagation()">
+              </div>
+            </div>
+          </div>
+
+          <!-- 捷運 -->
+          <div class="transport-item" id="t-mrt-item">
+            <div class="transport-head" onclick="toggleTransport('mrt')">
+              <span class="transport-icon">🚇</span>
+              <span class="transport-name">捷運</span>
+              <div class="transport-toggle" id="t-mrt-toggle"></div>
+            </div>
+            <div class="transport-inputs" id="t-mrt-inputs" onclick="event.stopPropagation()">
+              <div class="transport-input-group">
+                <div class="transport-input-label">金額（元）</div>
+                <input class="transport-input" id="t-mrt-amount" type="number" min="0" placeholder="0" oninput="updateExpenseTotal()" onclick="event.stopPropagation()">
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="expense-total">
+          <span class="expense-total-label">💰 旅費合計</span>
+          <span class="expense-total-amount" id="expense-total-display">NT$ 0</span>
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">費用單據（收據／發票）</label>
+      <div class="upload-area" id="trip-upload-area"
+        onclick="document.getElementById('t-files').click()"
+        ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="tripDropFiles(event)">
+        <div class="upload-icon">🧾</div>
+        <div class="upload-text">點擊上傳費用單據<br>JPG・PNG・PDF，最大 5MB</div>
+      </div>
+      <input type="file" id="t-files" multiple accept="image/*,.pdf" style="display:none;" onchange="handleTripFiles(this.files)">
+      <div class="file-list" id="trip-file-list"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="closeTripModal()">取消</button>
+      <button class="btn-primary" id="trip-save-btn" onclick="saveTrip()">儲存出差單</button>
+    </div>
+    <div id="trip-delete-wrap" style="display:none;margin-top:4px;">
+      <button class="btn-danger" onclick="deleteTrip()">🗑 刪除此出差單</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- SUPPORT MODAL -->
+<div class="modal-overlay" id="support-modal" onclick="closeSupportModalOnOverlay(event)">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="support-modal-title">新增支援單</div>
+    <div class="form-group">
+      <label class="form-label">支援日期</label>
+      <input class="form-input" id="s-date" type="date">
+    </div>
+    <div class="form-group">
+      <label class="form-label">支援時間 → 結束時間</label>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <select id="s-hour" class="form-select" style="flex:1;padding:12px 8px;font-size:15px;font-weight:700;font-family:'DM Mono',monospace;text-align:center;"></select>
+        <span style="font-size:18px;font-weight:700;color:var(--mist);">:</span>
+        <select id="s-min" class="form-select" style="flex:1;padding:12px 8px;font-size:15px;font-weight:700;font-family:'DM Mono',monospace;text-align:center;"></select>
+        <span style="font-size:16px;color:var(--mist);padding:0 2px;">→</span>
+        <select id="s-hour-end" class="form-select" style="flex:1;padding:12px 8px;font-size:15px;font-weight:700;font-family:'DM Mono',monospace;text-align:center;"></select>
+        <span style="font-size:18px;font-weight:700;color:var(--mist);">:</span>
+        <select id="s-min-end" class="form-select" style="flex:1;padding:12px 8px;font-size:15px;font-weight:700;font-family:'DM Mono',monospace;text-align:center;"></select>
+      </div>
+      <div style="display:flex;font-size:10px;color:var(--mist);margin-top:4px;letter-spacing:1px;">
+        <div style="flex:1;text-align:center;">開始時</div><div style="flex:1;text-align:center;">分</div>
+        <div style="width:20px;"></div>
+        <div style="flex:1;text-align:center;">結束時</div><div style="flex:1;text-align:center;">分</div>
+      </div>
+      <div id="support-duration-hint" style="font-size:12px;color:var(--bamboo);font-weight:700;margin-top:6px;text-align:center;"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">支援分店</label>
+      <select class="form-select" id="s-store">
+        <option value="MZTJS">新竹金山店</option>
+        <option value="MZTGF">新竹光復店</option>
+        <option value="MZTLZL">台北六張犁店</option>
+        <option value="MZTRG">內湖瑞光店</option>
+        <option value="MZTMC">台中美村店</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">支援目的／內容</label>
+      <textarea class="form-textarea" id="s-purpose" placeholder="例：協助廚區設備安裝、現場督導施工"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">餐費</label>
+      <div class="meal-toggle-row" id="support-meal-row" onclick="toggleMeal('support')">
+        <span class="meal-icon">🍱</span>
+        <span class="meal-label">餐費補助</span>
+        <span class="meal-amount">NT$ 100</span>
+        <div class="meal-check" id="support-meal-check"></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">交通費支出</label>
+      <div class="expense-section">
+        <div class="expense-transport-row">
+          <div class="transport-item" id="s-car-item">
+            <div class="transport-head" onclick="toggleSupportTransport('car')">
+              <span class="transport-icon">🚗</span>
+              <span class="transport-name">汽車</span>
+              <div class="transport-toggle" id="s-car-toggle"></div>
+            </div>
+            <div class="transport-inputs" id="s-car-inputs" onclick="event.stopPropagation()">
+              <div class="transport-input-group">
+                <div class="transport-input-label">公里數（km）</div>
+                <input class="transport-input" id="s-car-km" type="number" min="0" placeholder="0" oninput="calcSupportCarAmount()" onclick="event.stopPropagation()">
+              </div>
+              <div class="transport-input-group">
+                <div class="transport-input-label">金額 ＠4.5元/km</div>
+                <input class="transport-input" id="s-car-amount" type="number" min="0" placeholder="自動計算" style="background:#f0fbf5;color:var(--bamboo);font-weight:700;" oninput="updateSupportTotal()" onclick="event.stopPropagation()">
+              </div>
+            </div>
+            <div style="font-size:10px;color:var(--mist);margin-top:4px;padding:0 2px;" id="s-car-hint" style="display:none;">公里數 × 4.5 = 補助金額，可手動調整</div>
+          </div>
+          <div class="transport-item" id="s-hsr-item">
+            <div class="transport-head" onclick="toggleSupportTransport('hsr')">
+              <span class="transport-icon">🚄</span><span class="transport-name">高鐵</span>
+              <div class="transport-toggle" id="s-hsr-toggle"></div>
+            </div>
+            <div class="transport-inputs" id="s-hsr-inputs" onclick="event.stopPropagation()">
+              <div class="transport-input-group">
+                <div class="transport-input-label">金額（元）</div>
+                <input class="transport-input" id="s-hsr-amount" type="number" min="0" placeholder="0" oninput="updateSupportTotal()" onclick="event.stopPropagation()">
+              </div>
+            </div>
+          </div>
+          <div class="transport-item" id="s-tra-item">
+            <div class="transport-head" onclick="toggleSupportTransport('tra')">
+              <span class="transport-icon">🚂</span><span class="transport-name">台鐵</span>
+              <div class="transport-toggle" id="s-tra-toggle"></div>
+            </div>
+            <div class="transport-inputs" id="s-tra-inputs" onclick="event.stopPropagation()">
+              <div class="transport-input-group">
+                <div class="transport-input-label">金額（元）</div>
+                <input class="transport-input" id="s-tra-amount" type="number" min="0" placeholder="0" oninput="updateSupportTotal()" onclick="event.stopPropagation()">
+              </div>
+            </div>
+          </div>
+          <div class="transport-item" id="s-mrt-item">
+            <div class="transport-head" onclick="toggleSupportTransport('mrt')">
+              <span class="transport-icon">🚇</span><span class="transport-name">捷運</span>
+              <div class="transport-toggle" id="s-mrt-toggle"></div>
+            </div>
+            <div class="transport-inputs" id="s-mrt-inputs" onclick="event.stopPropagation()">
+              <div class="transport-input-group">
+                <div class="transport-input-label">金額（元）</div>
+                <input class="transport-input" id="s-mrt-amount" type="number" min="0" placeholder="0" oninput="updateSupportTotal()" onclick="event.stopPropagation()">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="expense-total">
+          <span class="expense-total-label">💰 費用合計（含餐費）</span>
+          <span class="expense-total-amount" id="support-total-display">NT$ 0</span>
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">費用單據（收據／發票）</label>
+      <div class="upload-area" id="support-upload-area"
+        onclick="document.getElementById('s-files').click()"
+        ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="supportDropFiles(event)">
+        <div class="upload-icon">🧾</div>
+        <div class="upload-text">點擊上傳費用單據<br>JPG・PNG・PDF，最大 5MB</div>
+      </div>
+      <input type="file" id="s-files" multiple accept="image/*,.pdf" style="display:none;" onchange="handleSupportFiles(this.files)">
+      <div class="file-list" id="support-file-list"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="closeSupportModal()">取消</button>
+      <button class="btn-primary" id="support-save-btn" onclick="saveSupport()">儲存支援單</button>
+    </div>
+    <div id="support-delete-wrap" style="display:none;margin-top:4px;">
+      <button class="btn-danger" onclick="deleteSupport()">🗑 刪除此支援單</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
